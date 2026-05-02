@@ -1,0 +1,28 @@
+node_modules/
+dist/
+.env
+*.local
+
+# uni-app build output
+packages/miniapp/dist/
+packages/miniapp/unpackage/
+
+# server build
+packages/server/dist/
+
+# logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

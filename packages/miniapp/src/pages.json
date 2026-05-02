@@ -1,0 +1,77 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "专注训练",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/games/index",
+      "style": {
+        "navigationBarTitleText": "游戏广场",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/game-schulte/index",
+      "style": {
+        "navigationBarTitleText": "舒尔特方格",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/parent/index",
+      "style": {
+        "navigationBarTitleText": "家长报告",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#6C63FF",
+    "borderStyle": "black",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "训练首页",
+        "iconPath": "static/tab-home.png",
+        "selectedIconPath": "static/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/parent/index",
+        "text": "家长报告",
+        "iconPath": "static/tab-report.png",
+        "selectedIconPath": "static/tab-report-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "static/tab-profile.png",
+        "selectedIconPath": "static/tab-profile-active.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "专注力训练",
+    "navigationBarBackgroundColor": "#6C63FF",
+    "backgroundColor": "#f5f5f5"
+  },
+  "uniIdRouter": {}
+}

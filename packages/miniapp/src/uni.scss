@@ -1,0 +1,152 @@
+/* 品牌色彩变量 */
+$color-primary: #6C63FF;
+$color-success: #6BCB77;
+$color-warning: #FFD93D;
+$color-error: #FF8A80;
+$color-text-primary: #333333;
+$color-text-secondary: #666666;
+$color-text-placeholder: #999999;
+$color-border: #E8E8E8;
+$color-bg: #F5F5F5;
+$color-bg-card: #FFFFFF;
+$color-white: #FFFFFF;
+
+/* 字体大小 */
+$font-size-xs: 22rpx;
+$font-size-sm: 24rpx;
+$font-size-base: 28rpx;
+$font-size-md: 32rpx;
+$font-size-lg: 36rpx;
+$font-size-xl: 40rpx;
+$font-size-xxl: 48rpx;
+
+/* 间距 */
+$spacing-xs: 8rpx;
+$spacing-sm: 16rpx;
+$spacing-base: 24rpx;
+$spacing-md: 32rpx;
+$spacing-lg: 40rpx;
+$spacing-xl: 48rpx;
+$spacing-xxl: 64rpx;
+
+/* 圆角 */
+$radius-sm: 8rpx;
+$radius-base: 16rpx;
+$radius-md: 24rpx;
+$radius-lg: 32rpx;
+$radius-round: 999rpx;
+
+/* 阴影 */
+$shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+$shadow-base: 0 4rpx 16rpx rgba(0, 0, 0, 0.12);
+$shadow-lg: 0 8rpx 32rpx rgba(0, 0, 0, 0.16);
+
+/* 动画 */
+$transition-base: all 0.2s ease;
+$transition-slow: all 0.3s ease;
+
+/* 全局 CSS 变量（供非 scss 文件使用） */
+page {
+  --color-primary: #{$color-primary};
+  --color-success: #{$color-success};
+  --color-warning: #{$color-warning};
+  --color-error: #{$color-error};
+  --color-text-primary: #{$color-text-primary};
+  --color-text-secondary: #{$color-text-secondary};
+  --color-border: #{$color-border};
+  --color-bg: #{$color-bg};
+  --color-bg-card: #{$color-bg-card};
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  background-color: $color-bg;
+  color: $color-text-primary;
+}
+
+/* 通用工具类 */
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-primary {
+  color: $color-primary;
+}
+
+.text-success {
+  color: $color-success;
+}
+
+.text-warning {
+  color: $color-warning;
+}
+
+.text-error {
+  color: $color-error;
+}
+
+.bg-primary {
+  background-color: $color-primary;
+}
+
+.card {
+  background-color: $color-bg-card;
+  border-radius: $radius-md;
+  box-shadow: $shadow-sm;
+  padding: $spacing-base;
+}
+
+/* 按钮基础样式 */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-round;
+  font-size: $font-size-base;
+  font-weight: 600;
+  padding: 0 $spacing-lg;
+  height: 88rpx;
+  border: none;
+
+  &::after {
+    border: none;
+  }
+}
+
+.btn-primary {
+  @extend .btn;
+  background-color: $color-primary;
+  color: $color-white;
+}
+
+.btn-outline {
+  @extend .btn;
+  background-color: transparent;
+  border: 2rpx solid $color-primary;
+  color: $color-primary;
+}
+
+.btn-success {
+  @extend .btn;
+  background-color: $color-success;
+  color: $color-white;
+}
