@@ -1,8 +1,12 @@
-# 儿童专注力训练小程序 — Monorepo
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## 项目概述
 
-一款面向 4-12 岁儿童的专注力训练微信小程序，包含 9 款专注力训练游戏，提供家长数据报告与成就系统。
+儿童专注力训练微信小程序「专注星球」（FocusKids），面向 4-12 岁儿童，包含 9 款专注力训练游戏，提供家长数据报告与成就系统。
+
+产品 Slogan：**每天10分钟，专注伴成长**
 
 ## 技术栈
 
@@ -13,27 +17,16 @@
 | 数据库 | MySQL 8.0 + Redis |
 | Monorepo | npm workspaces |
 
-## 目录结构
-
-```
-expo-express-monorepo/
-├── package.json          # workspace root
-├── packages/
-│   ├── miniapp/          # uni-app 微信小程序前端
-│   └── server/           # Express 后端
-└── doc/                  # 产品设计文档
-```
-
 ## 开发命令
 
 ```bash
 # 安装所有依赖
 npm install
 
-# 启动后端开发服务器（热重载）
+# 启动后端（热重载）
 npm run dev:server
 
-# 启动小程序开发构建（微信开发者工具打开 packages/miniapp/dist/dev/mp-weixin）
+# 启动小程序开发构建
 npm run dev:miniapp
 
 # 生产构建
@@ -41,59 +34,74 @@ npm run build:server
 npm run build:miniapp
 ```
 
-## 后端单独命令
+微信开发者工具导入 `packages/miniapp/dist/dev/mp-weixin` 即可预览。
 
-```bash
-cd packages/server
+## 目录结构
 
-# 开发模式
-npm run dev
-
-# 构建
-npm run build
-
-# 生产启动
-npm start
-
-# 数据库初始化
-mysql -u root -p < sql/init.sql
+```
+focus-training/
+├── package.json          # workspace root，定义 scripts 和 workspaces
+├── packages/
+│   ├── miniapp/          # uni-app 微信小程序前端
+│   │   ├── src/
+│   │   │   ├── api/          # 请求封装（request.ts + 各模块 API）
+│   │   │   ├── components/   # 通用组件（GameCard, GameTimer, ProgressBar, StarRating）
+│   │   │   ├── pages/        # 页面（index, games, game-schulte, parent, profile）
+│   │   │   ├── store/        # Pinia 状态（user, game, index）
+│   │   │   └── utils/        # 工具函数（auth.ts, storage.ts）
+│   │   └── package.json
+│   └── server/           # Express 后端
+│       ├── src/
+│       │   ├── app.ts          # Express 应用入口
+│       │   ├── server.ts       # HTTP 服务器
+│       │   ├── config/         # 数据库和 Redis 配置
+│       │   ├── controllers/    # 业务逻辑（auth, user, game, report）
+│       │   ├── middleware/     # 中间件（auth, errorHandler, rateLimit）
+│       │   ├── models/         # 数据模型（User, Child, TrainingRecord, FocusReport）
+│       │   ├── routes/         # 路由定义
+│       │   └── types/          # TypeScript 类型定义
+│       ├── sql/init.sql        # 数据库初始化脚本
+│       └── package.json
+└── docs/                 # 产品设计文档（PRD、数据库设计、UI 设计等）
 ```
 
-## 小程序单独命令
+## 后端架构
 
-```bash
-cd packages/miniapp
+Express + TypeScript，使用 mysql2 连接池（不使用 ORM）。
 
-# 微信小程序开发构建
-npm run dev:mp-weixin
+**认证方案**：JWT（有效期 7 天）+ Redis 缓存用户 session。
 
-# 微信小程序生产构建
-npm run build:mp-weixin
-```
+**接口规范**：所有接口前缀 `/api`，认证接口在 Header 中携带 `Authorization: Bearer <token>`。
 
-## 环境变量配置
+## API 路由
 
-复制 `packages/server/.env.example` 为 `packages/server/.env`，填写实际配置：
+| 模块 | 路径 | 说明 |
+|------|------|------|
+| auth | POST /api/auth/wx-login | 微信登录 |
+| user | GET /api/user/info | 获取用户信息 |
+| user | POST /api/user/child | 添加儿童 |
+| user | GET /api/user/children | 获取儿童列表 |
+| game | POST /api/game/record | 提交游戏记录 |
+| game | GET /api/game/records | 获取训练历史 |
+| report | GET /api/report/weekly/:childId | 获取周报 |
+| report | GET /api/report/today/:childId | 获取今日数据 |
 
-```bash
-cp packages/server/.env.example packages/server/.env
-```
+## 数据库
 
-## 数据库初始化
+MySQL 8.0 + Redis。初始化：`mysql -u root -p < packages/server/sql/init.sql`
 
-```bash
-# 创建数据库并初始化表结构与游戏数据
-mysql -u root -p < packages/server/sql/init.sql
-```
+**核心表**：user（家长）、child（儿童）、training_record（训练记录）、game（游戏配置）、achievement（成就）、focus_report（报告）
 
 ## 品牌色彩
 
-- 主色（品牌紫）：`#6C63FF`
-- 成功色（草地绿）：`#6BCB77`
-- 警告色（阳光黄）：`#FFD93D`
-- 错误色（柔和红）：`#FF8A80`
-- 文字主色：`#333333`
-- 文字次色：`#666666`
+| 用途 | 色值 |
+|------|------|
+| 主色（品牌紫） | `#6C63FF` |
+| 成功色（草地绿） | `#6BCB77` |
+| 警告色（阳光黄） | `#FFD93D` |
+| 错误色（柔和红） | `#FF8A80` |
+| 文字主色 | `#333333` |
+| 文字次色 | `#666666` |
 
 ## 游戏列表
 
@@ -109,25 +117,15 @@ mysql -u root -p < packages/server/sql/init.sql
 | G008 | 数字方阵 | 计算 |
 | G009 | 声音专注 | 听觉 |
 
-## API 规范
+## 环境配置
 
-所有接口前缀 `/api`，认证接口在 Header 中携带 `Authorization: Bearer <token>`。
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | /api/auth/wx-login | 微信登录 |
-| GET | /api/user/info | 获取用户信息 |
-| POST | /api/user/child | 添加儿童 |
-| GET | /api/user/children | 获取儿童列表 |
-| POST | /api/game/record | 提交游戏记录 |
-| GET | /api/game/records | 获取训练历史 |
-| GET | /api/report/weekly/:childId | 获取周报 |
-| GET | /api/report/today/:childId | 获取今日数据 |
+```bash
+cp packages/server/.env.example packages/server/.env
+```
 
 ## 注意事项
 
 1. TypeScript 严格模式，所有文件必须通过类型检查
 2. Vue 组件使用 `<script setup lang="ts">` 写法
 3. 后端使用 mysql2 连接池，不使用 ORM
-4. JWT 有效期 7 天，Redis 缓存用户 session
-5. 小程序请求封装见 `packages/miniapp/src/api/request.ts`
+4. 小程序请求封装见 `packages/miniapp/src/api/request.ts`
