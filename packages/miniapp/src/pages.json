@@ -25,6 +25,78 @@
       }
     },
     {
+      "path": "pages/game-audio/index",
+      "style": {
+        "navigationBarTitleText": "听声辨数",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/game-memory/index",
+      "style": {
+        "navigationBarTitleText": "图案记忆",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/game-visual/index",
+      "style": {
+        "navigationBarTitleText": "视觉追踪",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/game-reaction/index",
+      "style": {
+        "navigationBarTitleText": "反应速度",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/game-rhythm/index",
+      "style": {
+        "navigationBarTitleText": "节奏点击",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/game-sound/index",
+      "style": {
+        "navigationBarTitleText": "听觉记忆",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/game-maze/index",
+      "style": {
+        "navigationBarTitleText": "迷宫寻路",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/game-sort/index",
+      "style": {
+        "navigationBarTitleText": "快速分类",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/game-tracking/index",
+      "style": {
+        "navigationBarTitleText": "追踪目标",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/parent/index",
       "style": {
         "navigationBarTitleText": "家长报告",
@@ -36,6 +108,30 @@
       "path": "pages/profile/index",
       "style": {
         "navigationBarTitleText": "我的",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/achievement/index",
+      "style": {
+        "navigationBarTitleText": "成就中心",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/assessment/index",
+      "style": {
+        "navigationBarTitleText": "专注力评估",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/membership/index",
+      "style": {
+        "navigationBarTitleText": "会员中心",
         "navigationBarBackgroundColor": "#6C63FF",
         "navigationBarTextStyle": "white"
       }

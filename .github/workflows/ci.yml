@@ -1,0 +1,252 @@
+# FocusKids 专注星球 - CI/CD 配置文件
+
+name: FocusKids CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '18'
+  API_URL: ${{ secrets.API_URL }}
+  WEIXIN_APP_ID: ${{ secrets.WEIXIN_APP_ID }}
+
+jobs:
+  # ============================================================
+  # 后端测试与构建
+  # ============================================================
+  backend-test:
+    name: Backend Test
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: packages/server
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: packages/server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+        env:
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          directory: packages/server/coverage
+
+  backend-build:
+    name: Backend Build
+    runs-on: ubuntu-latest
+    needs: backend-test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: packages/server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+      - name: Docker Build & Push
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          context: packages/server
+          push: true
+          tags: |
+            focuskids/api:${{ github.sha }}
+            focuskids/api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          secrets: |
+            "docker_password=${{ secrets.DOCKER_PASSWORD }}"
+
+  # ============================================================
+  # 前端测试与构建
+  # ============================================================
+  frontend-test:
+    name: Frontend Test
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: packages/miniapp
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: packages/miniapp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test
+        env:
+          WEIXIN_APP_ID: ${{ secrets.WEIXIN_APP_ID }}
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          directory: packages/miniapp/coverage
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    needs: frontend-test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: packages/miniapp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: miniapp-dist
+          path: packages/miniapp/dist/
+
+  # ============================================================
+  # 部署
+  # ============================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [backend-build, frontend-build]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: miniapp-dist
+          path: packages/miniapp/dist/
+
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          password: ${{ secrets.STAGING_PASSWORD }}
+          script: |
+            cd /app/focuskids
+            docker-compose pull
+            docker-compose up -d
+            docker image prune -f
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [backend-build, frontend-build]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: miniapp-dist
+          path: packages/miniapp/dist/
+
+      - name: Deploy to Production Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          password: ${{ secrets.PRODUCTION_PASSWORD }}
+          script: |
+            cd /app/focuskids
+            docker-compose pull
+            docker-compose up -d --no-deps
+            docker image prune -f
+            # Send notification
+            curl -X POST ${{ secrets.SLACK_WEBHOOK }} -d '{"text":"🚀 FocusKids 生产环境部署完成"}'
+
+  # ============================================================
+  # 安全扫描
+  # ============================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'

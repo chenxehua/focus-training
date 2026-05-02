@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { UserController } from '../controllers/userController'
+import { userController } from '../controllers'
 import { authMiddleware } from '../middleware/auth'
 
 const router = Router()
@@ -11,30 +11,30 @@ router.use(authMiddleware)
  * GET /api/user/info
  * 获取当前用户信息
  */
-router.get('/info', UserController.getInfo)
+router.get('/info', userController.getInfo)
 
 /**
  * PUT /api/user/info
  * 更新用户信息（昵称、头像）
  */
-router.put('/info', UserController.updateInfo)
+router.put('/info', userController.updateInfo)
 
 /**
  * GET /api/user/children
  * 获取家长名下的儿童列表
  */
-router.get('/children', UserController.getChildren)
+router.get('/children', userController.getChildren)
 
 /**
  * POST /api/user/child
  * 添加儿童
  */
-router.post('/child', UserController.addChild)
+router.post('/child', userController.addChild)
 
 /**
  * PUT /api/user/child/:childId
  * 更新儿童信息
  */
-router.put('/child/:childId', UserController.updateChild)
+router.put('/child/:childId', userController.updateChild)
 
 export default router

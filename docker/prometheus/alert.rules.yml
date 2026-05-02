@@ -1,0 +1,90 @@
+# Prometheus Alert Rules for FocusKids
+
+groups:
+  - name: focuskids_alerts
+    rules:
+      # API服务告警
+      - alert: APIHighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API错误率过高"
+          description: "API 5xx错误率超过5%，当前值: {{ $value }}"
+
+      - alert: APIHighLatency
+        expr: histogram_quantile(0.95, http_request_duration_seconds_bucket{job="focuskids-api"}) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API响应延迟过高"
+          description: "API P95响应时间超过2秒，当前值: {{ $value }}s"
+
+      # 数据库告警
+      - alert: MySQLHighConnectionUsage
+        expr: mysql_status_variables{metric="Threads_connected"} / mysql_status_variables{metric="max_connections"} > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL连接数过高"
+          description: "MySQL连接使用率超过80%"
+
+      - alert: MySQLOperationSlow
+        expr: rate(mysql_global_status_slow_queries[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL慢查询过多"
+          description: "MySQL慢查询速率超过10/秒"
+
+      # Redis告警
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis内存使用率过高"
+          description: "Redis内存使用率超过85%"
+
+      - alert: RedisConnectionExhausted
+        expr: redis_connected_clients > 1000
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis连接数耗尽"
+          description: "Redis连接数超过1000"
+
+      # Nginx告警
+      - alert: NginxHighErrorRate
+        expr: rate(nginx_http_requests_total{status=~"5.."}[5m]) / rate(nginx_http_requests_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Nginx错误率过高"
+          description: "Nginx 5xx错误率超过10%"
+
+      # 业务指标告警
+      - alert: NoActiveUsers
+        expr: sum(focuskids_active_users{hour="current"}) == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "无活跃用户"
+          description: "过去30分钟没有活跃用户，可能是服务异常"
+
+      - alert: HighTrainingFailureRate
+        expr: rate(focuskids_training_total{status="failed"}[5m]) / rate(focuskids_training_total[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "训练失败率过高"
+          description: "游戏训练失败率超过10%"
