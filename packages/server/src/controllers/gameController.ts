@@ -10,7 +10,7 @@ export class GameController {
   static async getGameList(_req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const games = await query<DbGame>(
-        "SELECT * FROM game WHERE status = 'active' ORDER BY id ASC"
+        'SELECT * FROM game WHERE status = 1 ORDER BY id ASC'
       )
       res.json(
         successResponse(

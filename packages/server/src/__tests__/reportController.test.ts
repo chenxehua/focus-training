@@ -11,20 +11,20 @@ jest.mock('../models/Child', () => ({
   }
 }))
 
-jest.mock('../models/FocusReport', () => ({
-  FocusReportModel: {
-    generate: jest.fn(),
-    getWeekly: jest.fn(),
-    getDaily: jest.fn(),
-    getHistory: jest.fn(),
+jest.mock('../models/TrainingRecord', () => ({
+  TrainingRecordModel: {
+    findTodayByChildId: jest.fn(),
+    getStreak: jest.fn(),
+    getTotalCount: jest.fn(),
     toPublic: jest.fn((r) => r),
   }
 }))
 
-// Mock database
-jest.mock('../config/database', () => ({
-  query: jest.fn(),
-  queryOne: jest.fn(),
+jest.mock('../models/FocusReport', () => ({
+  FocusReportModel: {
+    getWeeklyStats: jest.fn(),
+    getGameBreakdownForWeek: jest.fn(),
+  }
 }))
 
 describe('ReportController', () => {
@@ -50,38 +50,60 @@ describe('ReportController', () => {
     jest.clearAllMocks()
   })
 
-  describe('generateReport', () => {
-    it('should generate daily report successfully', async () => {
+  describe('getTodayData', () => {
+    it('should return today training data successfully', async () => {
       const { ChildModel } = require('../models/Child')
-      const { FocusReportModel } = require('../models/FocusReport')
+      const { TrainingRecordModel } = require('../models/TrainingRecord')
       
       ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      FocusReportModel.generate.mockResolvedValueOnce(1)
+      TrainingRecordModel.findTodayByChildId.mockResolvedValueOnce([
+        { id: 1, duration_seconds: 300, focus_score: 85 },
+        { id: 2, duration_seconds: 400, focus_score: 90 },
+      ])
+      TrainingRecordModel.getStreak.mockResolvedValueOnce(5)
+      TrainingRecordModel.getTotalCount.mockResolvedValueOnce(100)
 
       mockReq.params = { childId: '1' }
-      mockReq.body = { reportType: 'daily' }
 
-      await ReportController.generateReport(mockReq, mockRes, mockNext)
+      await ReportController.getTodayData(mockReq, mockRes, mockNext)
 
       expect(ChildModel.isOwnedByUser).toHaveBeenCalledWith(1, 1)
-      expect(FocusReportModel.generate).toHaveBeenCalled()
-      expect(mockRes.status).toHaveBeenCalledWith(201)
+      expect(TrainingRecordModel.findTodayByChildId).toHaveBeenCalledWith(1)
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 0,
+          data: expect.objectContaining({
+            currentStreak: 5,
+            totalTrainingCount: 100,
+            totalDuration: 700,
+            avgFocusScore: 88,
+          }),
+        })
+      )
     })
 
-    it('should generate weekly report successfully', async () => {
+    it('should return 0 values when no records', async () => {
       const { ChildModel } = require('../models/Child')
-      const { FocusReportModel } = require('../models/FocusReport')
+      const { TrainingRecordModel } = require('../models/TrainingRecord')
       
       ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      FocusReportModel.generate.mockResolvedValueOnce(1)
+      TrainingRecordModel.findTodayByChildId.mockResolvedValueOnce([])
+      TrainingRecordModel.getStreak.mockResolvedValueOnce(0)
+      TrainingRecordModel.getTotalCount.mockResolvedValueOnce(0)
 
       mockReq.params = { childId: '1' }
-      mockReq.body = { reportType: 'weekly' }
 
-      await ReportController.generateReport(mockReq, mockRes, mockNext)
+      await ReportController.getTodayData(mockReq, mockRes, mockNext)
 
-      expect(FocusReportModel.generate).toHaveBeenCalledWith(1, 'weekly')
-      expect(mockRes.status).toHaveBeenCalledWith(201)
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 0,
+          data: expect.objectContaining({
+            totalDuration: 0,
+            avgFocusScore: 0,
+          }),
+        })
+      )
     })
 
     it('should reject unauthorized access', async () => {
@@ -89,12 +111,11 @@ describe('ReportController', () => {
       ChildModel.isOwnedByUser.mockResolvedValueOnce(false)
 
       mockReq.params = { childId: '999' }
-      mockReq.body = { reportType: 'daily' }
 
-      await ReportController.generateReport(mockReq, mockRes, mockNext)
+      await ReportController.getTodayData(mockReq, mockRes, mockNext)
 
       expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({
-        message: '无权操作该孩子报告'
+        message: '无权查看该孩子数据'
       }))
     })
 
@@ -103,9 +124,8 @@ describe('ReportController', () => {
       ChildModel.isOwnedByUser.mockRejectedValueOnce(new Error('DB error'))
 
       mockReq.params = { childId: '1' }
-      mockReq.body = { reportType: 'daily' }
 
-      await ReportController.generateReport(mockReq, mockRes, mockNext)
+      await ReportController.getTodayData(mockReq, mockRes, mockNext)
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(Error))
     })
@@ -115,39 +135,77 @@ describe('ReportController', () => {
     it('should return weekly report successfully', async () => {
       const { ChildModel } = require('../models/Child')
       const { FocusReportModel } = require('../models/FocusReport')
-      const mockReport = {
-        id: 1,
-        child_id: 1,
-        report_type: 'weekly',
-        training_count: 5,
-        avg_focus_score: 85,
-      }
       
       ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      FocusReportModel.getWeekly.mockResolvedValueOnce(mockReport)
+      FocusReportModel.getWeeklyStats.mockResolvedValueOnce([
+        { date: '2024-05-06', training_count: 2, total_duration: 600, avg_focus_score: 85 },
+        { date: '2024-05-07', training_count: 1, total_duration: 300, avg_focus_score: 90 },
+      ])
+      FocusReportModel.getGameBreakdownForWeek.mockResolvedValueOnce([
+        { game_code: 'schulte', game_name: '舒尔特方格', count: 2, avg_score: 85 },
+      ])
 
       mockReq.params = { childId: '1' }
 
       await ReportController.getWeeklyReport(mockReq, mockRes, mockNext)
 
-      expect(FocusReportModel.getWeekly).toHaveBeenCalledWith(1)
+      expect(FocusReportModel.getWeeklyStats).toHaveBeenCalled()
       expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({ code: 0 })
+        expect.objectContaining({
+          code: 0,
+          data: expect.objectContaining({
+            trainingCount: 3,
+            totalDuration: 900,
+            avgFocusScore: 88,
+            highlights: expect.any(Array),
+          }),
+        })
       )
     })
 
-    it('should return 404 when report not found', async () => {
+    it('should generate highlights for good performance', async () => {
       const { ChildModel } = require('../models/Child')
       const { FocusReportModel } = require('../models/FocusReport')
       
       ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      FocusReportModel.getWeekly.mockResolvedValueOnce(null)
+      FocusReportModel.getWeeklyStats.mockResolvedValueOnce([
+        { date: '2024-05-06', training_count: 2, total_duration: 7200, avg_focus_score: 85 },
+        { date: '2024-05-07', training_count: 2, total_duration: 7200, avg_focus_score: 85 },
+        { date: '2024-05-08', training_count: 2, total_duration: 7200, avg_focus_score: 85 },
+        { date: '2024-05-09', training_count: 2, total_duration: 7200, avg_focus_score: 85 },
+        { date: '2024-05-10', training_count: 2, total_duration: 7200, avg_focus_score: 85 },
+        { date: '2024-05-11', training_count: 2, total_duration: 7200, avg_focus_score: 85 },
+        { date: '2024-05-12', training_count: 2, total_duration: 7200, avg_focus_score: 85 },
+      ])
+      FocusReportModel.getGameBreakdownForWeek.mockResolvedValueOnce([])
 
       mockReq.params = { childId: '1' }
 
       await ReportController.getWeeklyReport(mockReq, mockRes, mockNext)
 
-      expect(mockRes.status).toHaveBeenCalledWith(404)
+      const response = mockRes.json.mock.calls[0][0]
+      expect(response.code).toBe(0)
+      expect(response.data.highlights.length).toBeGreaterThan(0)
+      expect(response.data.highlights.some((h: any) => h.type === 'consistency')).toBe(true)
+      expect(response.data.highlights.some((h: any) => h.type === 'focus')).toBe(true)
+      expect(response.data.highlights.some((h: any) => h.type === 'duration')).toBe(true)
+    })
+
+    it('should return empty highlights when no data', async () => {
+      const { ChildModel } = require('../models/Child')
+      const { FocusReportModel } = require('../models/FocusReport')
+      
+      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
+      FocusReportModel.getWeeklyStats.mockResolvedValueOnce([])
+      FocusReportModel.getGameBreakdownForWeek.mockResolvedValueOnce([])
+
+      mockReq.params = { childId: '1' }
+
+      await ReportController.getWeeklyReport(mockReq, mockRes, mockNext)
+
+      const response = mockRes.json.mock.calls[0][0]
+      expect(response.code).toBe(0)
+      expect(response.data.highlights).toEqual([])
     })
 
     it('should reject unauthorized access', async () => {
@@ -159,121 +217,8 @@ describe('ReportController', () => {
       await ReportController.getWeeklyReport(mockReq, mockRes, mockNext)
 
       expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({
-        message: '无权查看该报告'
+        message: '无权查看该孩子报告'
       }))
-    })
-  })
-
-  describe('getDailyReport', () => {
-    it('should return daily report successfully', async () => {
-      const { ChildModel } = require('../models/Child')
-      const { FocusReportModel } = require('../models/FocusReport')
-      const mockReport = {
-        id: 1,
-        child_id: 1,
-        report_type: 'daily',
-        training_count: 2,
-        avg_focus_score: 90,
-      }
-      
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      FocusReportModel.getDaily.mockResolvedValueOnce(mockReport)
-
-      mockReq.params = { childId: '1' }
-      mockReq.query = { date: '2024-05-03' }
-
-      await ReportController.getDailyReport(mockReq, mockRes, mockNext)
-
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({ code: 0 })
-      )
-    })
-  })
-
-  describe('getReportHistory', () => {
-    it('should return report history with pagination', async () => {
-      const { ChildModel } = require('../models/Child')
-      const { FocusReportModel } = require('../models/FocusReport')
-      const mockReports = [
-        { id: 1, report_type: 'weekly' },
-        { id: 2, report_type: 'daily' },
-      ]
-      
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      FocusReportModel.getHistory.mockResolvedValueOnce({
-        list: mockReports,
-        total: 10,
-        page: 1,
-        pageSize: 20,
-      })
-
-      mockReq.params = { childId: '1' }
-      mockReq.query = { page: '1', pageSize: '20' }
-
-      await ReportController.getReportHistory(mockReq, mockRes, mockNext)
-
-      expect(FocusReportModel.getHistory).toHaveBeenCalledWith(1, {
-        page: 1,
-        pageSize: 20,
-      })
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          code: 0,
-          data: expect.objectContaining({
-            list: mockReports,
-            total: 10,
-          })
-        })
-      )
-    })
-
-    it('should use default pagination when not provided', async () => {
-      const { ChildModel } = require('../models/Child')
-      const { FocusReportModel } = require('../models/FocusReport')
-      
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      FocusReportModel.getHistory.mockResolvedValueOnce({
-        list: [],
-        total: 0,
-        page: 1,
-        pageSize: 20,
-      })
-
-      mockReq.params = { childId: '1' }
-      mockReq.query = {}
-
-      await ReportController.getReportHistory(mockReq, mockRes, mockNext)
-
-      expect(FocusReportModel.getHistory).toHaveBeenCalledWith(1, {
-        page: 1,
-        pageSize: 20,
-      })
-    })
-
-    it('should limit pageSize to 100', async () => {
-      const { ChildModel } = require('../models/Child')
-      const { FocusReportModel } = require('../models/FocusReport')
-      
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      FocusReportModel.getHistory.mockResolvedValueOnce({
-        list: [],
-        total: 0,
-        page: 1,
-        pageSize: 100,
-      })
-
-      mockReq.params = { childId: '1' }
-      mockReq.query = { pageSize: '500' }
-
-      await ReportController.getReportHistory(mockReq, mockRes, mockNext)
-
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            pageSize: 100,
-          })
-        })
-      )
     })
   })
 })

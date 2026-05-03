@@ -9,7 +9,7 @@
  */
 
 import { Router } from 'express'
-import { membershipController, paymentController } from '../controllers'
+import { MembershipController, PaymentController } from '../controllers'
 import { authMiddleware } from '../middleware/auth'
 
 const router = Router()
@@ -18,42 +18,42 @@ const router = Router()
  * GET /api/membership/status
  * 获取会员状态（需登录）
  */
-router.get('/status', authMiddleware, membershipController.getMembershipStatus)
+router.get('/status', authMiddleware, MembershipController.getMembershipStatus)
 
 /**
  * GET /api/membership/packages
  * 获取会员套餐列表（无需登录）
  */
-router.get('/packages', membershipController.getMembershipPackages)
+router.get('/packages', MembershipController.getMembershipPackages)
 
 /**
  * POST /api/membership/create-order
  * 创建会员订单（需登录）
  */
-router.post('/create-order', authMiddleware, paymentController.createOrder)
+router.post('/create-order', authMiddleware, PaymentController.createOrder)
 
 /**
  * GET /api/membership/order/:orderNo
  * 查询订单状态（需登录）
  */
-router.get('/order/:orderNo', authMiddleware, paymentController.getOrderStatus)
+router.get('/order/:orderNo', authMiddleware, PaymentController.getOrderStatus)
 
 /**
  * POST /api/membership/pay
  * 发起支付（需登录）
  */
-router.post('/pay', authMiddleware, paymentController.initiatePayment)
+router.post('/pay', authMiddleware, PaymentController.initiatePayment)
 
 /**
  * POST /api/membership/callback
  * 微信支付回调（无需登录，微信回调地址）
  */
-router.post('/callback', paymentController.handleCallback)
+router.post('/callback', PaymentController.handleCallback)
 
 /**
  * GET /api/membership/history
  * 获取购买历史（需登录）
  */
-router.get('/history', authMiddleware, membershipController.getPurchaseHistory)
+router.get('/history', authMiddleware, MembershipController.getPurchaseHistory)
 
 export default router

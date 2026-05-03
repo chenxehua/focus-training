@@ -7,6 +7,8 @@ import { AchievementController } from './achievementController'
 import { MembershipController } from './membershipController'
 import { PaymentController } from './paymentController'
 import { AssessmentController } from './assessmentController'
+import { AcademyController } from './academyController'
+import { RecommendationController } from './recommendationController'
 
 // Export singleton instances for routes and tests
 export const authController = new AuthController()
@@ -17,6 +19,8 @@ export const achievementController = new AchievementController()
 export const membershipController = new MembershipController()
 export const paymentController = new PaymentController()
 export const assessmentController = new AssessmentController()
+export const academyController = new AcademyController()
+export const recommendationController = new RecommendationController()
 
 // Also export classes for testing
 export {
@@ -28,4 +32,6 @@ export {
   MembershipController,
   PaymentController,
   AssessmentController,
+  AcademyController,
+  RecommendationController,
 }

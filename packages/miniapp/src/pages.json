@@ -135,6 +135,94 @@
         "navigationBarBackgroundColor": "#6C63FF",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/recommendation/index",
+      "style": {
+        "navigationBarTitleText": "训练推荐",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/academy/index",
+      "style": {
+        "navigationBarTitleText": "家长学院",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/academy/articles",
+      "style": {
+        "navigationBarTitleText": "文章列表",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/academy/article",
+      "style": {
+        "navigationBarTitleText": "文章详情",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/academy/questions",
+      "style": {
+        "navigationBarTitleText": "专家问答",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/academy/question",
+      "style": {
+        "navigationBarTitleText": "问题详情",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/academy/ask",
+      "style": {
+        "navigationBarTitleText": "提问",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/school/index",
+      "style": {
+        "navigationBarTitleText": "学校仪表盘",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/school/teachers",
+      "style": {
+        "navigationBarTitleText": "教师管理",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/school/classes",
+      "style": {
+        "navigationBarTitleText": "班级管理",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/school/students",
+      "style": {
+        "navigationBarTitleText": "学生管理",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
     }
   ],
   "tabBar": {

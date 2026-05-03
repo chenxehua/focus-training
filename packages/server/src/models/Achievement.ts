@@ -51,11 +51,12 @@ export class AchievementModel {
     const values: unknown[] = []
 
     if (where?.achievement_type) {
-      sql += ' AND achievement_type = ?'
+      sql += ' AND type = ?'
       values.push(where.achievement_type)
     }
+    // 使用 status 字段代替 is_active (status = 1 表示启用)
     if (where?.is_active !== undefined) {
-      sql += ' AND is_active = ?'
+      sql += ' AND status = ?'
       values.push(where.is_active)
     }
 
@@ -168,7 +169,7 @@ export class AchievementModel {
    * 获取成就解锁统计
    */
   static async getStats(childId: number): Promise<{ total: number; unlocked: number; progress: number }> {
-    const total = await queryOne<{ count: number }>('SELECT COUNT(*) as count FROM achievement WHERE is_active = 1')
+    const total = await queryOne<{ count: number }>('SELECT COUNT(*) as count FROM achievement WHERE status = 1')
     const unlocked = await queryOne<{ count: number }>(
       'SELECT COUNT(*) as count FROM child_achievement WHERE child_id = ? AND is_unlocked = 1',
       [childId]

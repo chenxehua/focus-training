@@ -89,4 +89,118 @@ export class FocusReportModel {
       [childId, weekStart, weekStart]
     )
   }
+
+  /**
+   * 获取用户的报告列表
+   */
+  static async findByUserId(
+    userId: number,
+    page: number,
+    pageSize: number,
+    childId?: number
+  ): Promise<{ reports: DbFocusReport[]; total: number }> {
+    let sql = `
+      SELECT fr.* FROM focus_report fr
+      JOIN child c ON fr.child_id = c.id
+      WHERE c.user_id = ?
+    `
+    const params: any[] = [userId]
+
+    if (childId) {
+      sql += ' AND fr.child_id = ?'
+      params.push(childId)
+    }
+
+    // Get total count
+    const countSql = sql.replace('SELECT fr.*', 'SELECT COUNT(*) as total')
+    const countResult = await queryOne<{ total: number }>(countSql, params)
+    const total = countResult?.total || 0
+
+    // Get paginated results
+    sql += ' ORDER BY fr.created_at DESC LIMIT ? OFFSET ?'
+    params.push(pageSize, (page - 1) * pageSize)
+    const reports = await query<DbFocusReport>(sql, params)
+
+    return { reports, total }
+  }
+
+  /**
+   * 根据ID和用户ID获取报告详情
+   */
+  static async findByIdWithAuth(reportId: number, userId: number): Promise<DbFocusReport | null> {
+    return queryOne<DbFocusReport>(
+      `SELECT fr.* FROM focus_report fr
+       JOIN child c ON fr.child_id = c.id
+       WHERE fr.id = ? AND c.user_id = ?`,
+      [reportId, userId]
+    )
+  }
+
+  /**
+   * 获取孩子最新报告
+   */
+  static async findLatestByChildId(childId: number): Promise<DbFocusReport | null> {
+    return queryOne<DbFocusReport>(
+      `SELECT * FROM focus_report 
+       WHERE child_id = ? 
+       ORDER BY created_at DESC 
+       LIMIT 1`,
+      [childId]
+    )
+  }
+
+  /**
+   * 为孩子生成报告
+   */
+  static async generateForChild(
+    childId: number,
+    reportType: 'daily' | 'weekly'
+  ): Promise<DbFocusReport> {
+    const reportDate = reportType === 'daily'
+      ? new Date().toISOString().split('T')[0]
+      : getWeekStart(new Date())
+
+    // 获取训练统计
+    const startDate = reportType === 'daily'
+      ? new Date().toISOString().split('T')[0]
+      : getWeekStart(new Date())
+
+    const stats = await queryOne<{
+      training_count: number
+      total_duration: number
+      avg_focus_score: number
+    }>(
+      `SELECT 
+         COUNT(*) as training_count,
+         COALESCE(SUM(duration_seconds), 0) as total_duration,
+         COALESCE(ROUND(AVG(focus_score)), 0) as avg_focus_score
+       FROM training_record
+       WHERE child_id = ?
+         AND created_at >= ?
+         ${reportType === 'daily' ? 'AND created_at < DATE_ADD(?, INTERVAL 1 DAY)' : ''}`,
+      [childId, startDate, startDate]
+    )
+
+    // 插入/更新报告
+    await this.upsert({
+      childId,
+      reportType,
+      reportDate,
+      trainingCount: stats?.training_count || 0,
+      totalDuration: stats?.total_duration || 0,
+      avgFocusScore: stats?.avg_focus_score || 0,
+    })
+
+    // 返回生成的报告
+    return (await this.findByChildAndDate(childId, reportType, reportDate))!
+  }
+}
+
+// 辅助函数：获取周开始日期
+function getWeekStart(date: Date): string {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+  d.setDate(diff)
+  return d.toISOString().split('T')[0] as string
 }

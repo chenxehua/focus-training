@@ -2,46 +2,33 @@
  * AI推荐引擎单元测试
  */
 
-import { RecommendationController } from '../controllers/recommendationController'
-
-// Mock models
-jest.mock('../models/Child', () => ({
-  ChildModel: {
-    isOwnedByUser: jest.fn(),
-    findById: jest.fn(),
-  }
-}))
+import RecommendationController from '../controllers/recommendationController'
 
 // Mock recommendation service
 jest.mock('../services/recommendationService', () => ({
-  generateUserProfile: jest.fn(),
-  getGameRecommendations: jest.fn(),
-  generateWeeklyPlan: jest.fn(),
-  getDifficultySuggestion: jest.fn(),
-}))
-
-// Mock database
-jest.mock('../config/database', () => ({
-  query: jest.fn(),
-  queryOne: jest.fn(),
+  RecommendationService: {
+    buildUserProfile: jest.fn(),
+    getRecommendations: jest.fn(),
+    generateWeeklyPlan: jest.fn(),
+    adjustDifficulty: jest.fn(),
+  },
 }))
 
 describe('RecommendationController', () => {
   let mockReq: any
   let mockRes: any
-  let mockNext: jest.Mock
 
   beforeEach(() => {
     mockReq = {
       userId: 1,
       params: {},
       query: {},
+      body: {},
     }
     mockRes = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
     }
-    mockNext = jest.fn()
   })
 
   afterEach(() => {
@@ -50,8 +37,7 @@ describe('RecommendationController', () => {
 
   describe('getUserProfile', () => {
     it('should return user profile successfully', async () => {
-      const { ChildModel } = require('../models/Child')
-      const recommendationService = require('../services/recommendationService')
+      const { RecommendationService } = require('../services/recommendationService')
       const mockProfile = {
         childId: 1,
         ageGroup: '7-9',
@@ -64,54 +50,56 @@ describe('RecommendationController', () => {
         strengthDimensions: ['visualSearch'],
       }
 
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      ChildModel.findById.mockResolvedValueOnce({ id: 1, name: '小明', age: 8 })
-      recommendationService.generateUserProfile.mockResolvedValueOnce(mockProfile)
+      RecommendationService.buildUserProfile.mockResolvedValueOnce(mockProfile)
 
       mockReq.params = { childId: '1' }
 
-      await RecommendationController.getUserProfile(mockReq, mockRes, mockNext)
+      await RecommendationController.getUserProfile(mockReq, mockRes)
 
-      expect(ChildModel.isOwnedByUser).toHaveBeenCalledWith(1, 1)
-      expect(recommendationService.generateUserProfile).toHaveBeenCalledWith(1)
+      expect(RecommendationService.buildUserProfile).toHaveBeenCalledWith(1)
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          code: 0,
+          success: true,
           data: mockProfile,
         })
       )
     })
 
-    it('should reject unauthorized access', async () => {
-      const { ChildModel } = require('../models/Child')
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(false)
+    it('should validate childId parameter', async () => {
+      mockReq.params = {}
 
-      mockReq.params = { childId: '999' }
+      await RecommendationController.getUserProfile(mockReq, mockRes)
 
-      await RecommendationController.getUserProfile(mockReq, mockRes, mockNext)
-
-      expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({
-        message: '无权获取该用户画像'
-      }))
+      expect(mockRes.status).toHaveBeenCalledWith(400)
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: '缺少 childId 参数',
+        })
+      )
     })
 
-    it('should return 404 when child not found', async () => {
-      const { ChildModel } = require('../models/Child')
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      ChildModel.findById.mockResolvedValueOnce(null)
+    it('should handle server errors', async () => {
+      const { RecommendationService } = require('../services/recommendationService')
+      RecommendationService.buildUserProfile.mockRejectedValueOnce(new Error('DB error'))
 
       mockReq.params = { childId: '1' }
 
-      await RecommendationController.getUserProfile(mockReq, mockRes, mockNext)
+      await RecommendationController.getUserProfile(mockReq, mockRes)
 
-      expect(mockRes.status).toHaveBeenCalledWith(404)
+      expect(mockRes.status).toHaveBeenCalledWith(500)
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: '获取用户画像失败',
+        })
+      )
     })
   })
 
   describe('getRecommendations', () => {
     it('should return game recommendations successfully', async () => {
-      const { ChildModel } = require('../models/Child')
-      const recommendationService = require('../services/recommendationService')
+      const { RecommendationService } = require('../services/recommendationService')
       const mockRecommendations = [
         {
           gameId: 1,
@@ -129,61 +117,66 @@ describe('RecommendationController', () => {
         },
       ]
 
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      recommendationService.getGameRecommendations.mockResolvedValueOnce(mockRecommendations)
+      RecommendationService.getRecommendations.mockResolvedValueOnce(mockRecommendations)
 
       mockReq.params = { childId: '1' }
 
-      await RecommendationController.getRecommendations(mockReq, mockRes, mockNext)
+      await RecommendationController.getRecommendations(mockReq, mockRes)
 
-      expect(recommendationService.getGameRecommendations).toHaveBeenCalledWith(1)
+      expect(RecommendationService.getRecommendations).toHaveBeenCalledWith(1, 3)
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          code: 0,
-          data: mockRecommendations,
+          success: true,
+          data: expect.objectContaining({
+            recommendations: mockRecommendations,
+            generated_at: expect.any(String),
+          }),
         })
       )
     })
 
     it('should return empty array when no recommendations', async () => {
-      const { ChildModel } = require('../models/Child')
-      const recommendationService = require('../services/recommendationService')
-
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      recommendationService.getGameRecommendations.mockResolvedValueOnce([])
+      const { RecommendationService } = require('../services/recommendationService')
+      RecommendationService.getRecommendations.mockResolvedValueOnce([])
 
       mockReq.params = { childId: '1' }
 
-      await RecommendationController.getRecommendations(mockReq, mockRes, mockNext)
+      await RecommendationController.getRecommendations(mockReq, mockRes)
 
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          code: 0,
-          data: [],
+          success: true,
+          data: expect.objectContaining({
+            recommendations: [],
+          }),
         })
       )
     })
 
     it('should support limit parameter', async () => {
-      const { ChildModel } = require('../models/Child')
-      const recommendationService = require('../services/recommendationService')
-
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      recommendationService.getGameRecommendations.mockResolvedValueOnce([])
+      const { RecommendationService } = require('../services/recommendationService')
+      RecommendationService.getRecommendations.mockResolvedValueOnce([])
 
       mockReq.params = { childId: '1' }
-      mockReq.query = { limit: '3' }
+      mockReq.query = { limit: '5' }
 
-      await RecommendationController.getRecommendations(mockReq, mockRes, mockNext)
+      await RecommendationController.getRecommendations(mockReq, mockRes)
 
-      expect(recommendationService.getGameRecommendations).toHaveBeenCalledWith(1, 3)
+      expect(RecommendationService.getRecommendations).toHaveBeenCalledWith(1, 5)
+    })
+
+    it('should validate childId parameter', async () => {
+      mockReq.params = {}
+
+      await RecommendationController.getRecommendations(mockReq, mockRes)
+
+      expect(mockRes.status).toHaveBeenCalledWith(400)
     })
   })
 
   describe('getWeeklyPlan', () => {
     it('should return weekly training plan successfully', async () => {
-      const { ChildModel } = require('../models/Child')
-      const recommendationService = require('../services/recommendationService')
+      const { RecommendationService } = require('../services/recommendationService')
       const mockPlan = {
         dailyPlan: [
           { day: 1, games: [{ gameCode: 'schulte', rounds: 2 }] },
@@ -193,40 +186,36 @@ describe('RecommendationController', () => {
         focusAdvice: '本周重点提升视觉搜索能力',
       }
 
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      recommendationService.generateWeeklyPlan.mockResolvedValueOnce(mockPlan)
+      RecommendationService.generateWeeklyPlan.mockResolvedValueOnce(mockPlan)
 
       mockReq.params = { childId: '1' }
 
-      await RecommendationController.getWeeklyPlan(mockReq, mockRes, mockNext)
+      await RecommendationController.getWeeklyPlan(mockReq, mockRes)
 
-      expect(recommendationService.generateWeeklyPlan).toHaveBeenCalledWith(1)
+      expect(RecommendationService.generateWeeklyPlan).toHaveBeenCalledWith(1)
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          code: 0,
-          data: mockPlan,
+          success: true,
+          data: expect.objectContaining({
+            plan: mockPlan,
+            generated_at: expect.any(String),
+          }),
         })
       )
     })
 
-    it('should reject unauthorized access', async () => {
-      const { ChildModel } = require('../models/Child')
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(false)
+    it('should validate childId parameter', async () => {
+      mockReq.params = {}
 
-      mockReq.params = { childId: '999' }
+      await RecommendationController.getWeeklyPlan(mockReq, mockRes)
 
-      await RecommendationController.getWeeklyPlan(mockReq, mockRes, mockNext)
-
-      expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({
-        message: '无权获取该用户训练计划'
-      }))
+      expect(mockRes.status).toHaveBeenCalledWith(400)
     })
   })
 
   describe('getDifficultySuggestion', () => {
     it('should return difficulty suggestion successfully', async () => {
-      const { ChildModel } = require('../models/Child')
-      const recommendationService = require('../services/recommendationService')
+      const { RecommendationService } = require('../services/recommendationService')
       const mockSuggestion = {
         recommendedLevel: 3,
         reason: '表现稳定，建议提升难度',
@@ -234,48 +223,52 @@ describe('RecommendationController', () => {
         shouldDecrease: false,
       }
 
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      recommendationService.getDifficultySuggestion.mockResolvedValueOnce(mockSuggestion)
+      RecommendationService.adjustDifficulty.mockResolvedValueOnce(mockSuggestion)
 
       mockReq.params = { childId: '1', gameId: '4' }
 
-      await RecommendationController.getDifficultySuggestion(mockReq, mockRes, mockNext)
+      await RecommendationController.getDifficultySuggestion(mockReq, mockRes)
 
-      expect(recommendationService.getDifficultySuggestion).toHaveBeenCalledWith(1, 4)
+      expect(RecommendationService.adjustDifficulty).toHaveBeenCalledWith(1, 4, [])
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          code: 0,
+          success: true,
           data: mockSuggestion,
         })
       )
     })
 
-    it('should return suggestion to decrease difficulty', async () => {
-      const { ChildModel } = require('../models/Child')
-      const recommendationService = require('../services/recommendationService')
+    it('should return suggestion with recent scores', async () => {
+      const { RecommendationService } = require('../services/recommendationService')
       const mockSuggestion = {
-        recommendedLevel: 1,
+        recommendedLevel: 2,
         reason: '错误率较高，建议降低难度',
         shouldIncrease: false,
         shouldDecrease: true,
       }
 
-      ChildModel.isOwnedByUser.mockResolvedValueOnce(true)
-      recommendationService.getDifficultySuggestion.mockResolvedValueOnce(mockSuggestion)
+      RecommendationService.adjustDifficulty.mockResolvedValueOnce(mockSuggestion)
 
       mockReq.params = { childId: '1', gameId: '4' }
+      mockReq.body = { recentScores: [60, 65, 70] }
 
-      await RecommendationController.getDifficultySuggestion(mockReq, mockRes, mockNext)
+      await RecommendationController.getDifficultySuggestion(mockReq, mockRes)
 
-      expect(mockSuggestion.shouldDecrease).toBe(true)
+      expect(RecommendationService.adjustDifficulty).toHaveBeenCalledWith(1, 4, [60, 65, 70])
     })
 
-    it('should validate gameId parameter', async () => {
-      mockReq.params = { childId: '1', gameId: 'invalid' }
+    it('should validate required parameters', async () => {
+      mockReq.params = { childId: '1' } // missing gameId
 
-      await RecommendationController.getDifficultySuggestion(mockReq, mockRes, mockNext)
+      await RecommendationController.getDifficultySuggestion(mockReq, mockRes)
 
       expect(mockRes.status).toHaveBeenCalledWith(400)
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: '缺少必要参数',
+        })
+      )
     })
   })
 })

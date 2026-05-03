@@ -1,4 +1,4 @@
-import type { Request } from 'express'
+import { Request, Response } from 'express'
 
 // ============================================================
 // 通用响应类型
@@ -68,6 +68,8 @@ export interface DbGame {
   target_age_group: string
   description: string | null
   is_free: boolean
+  requires_vip?: boolean
+  category?: string
   status: 'active' | 'inactive'
 }
 
@@ -138,4 +140,19 @@ export interface UpdateUserBody {
   nickname?: string
   avatar?: string
   phone?: string
+}
+
+// ============================================================
+// 数据库模块接口
+// ============================================================
+export interface DatabaseModule {
+  query<T = Record<string, unknown>>(sql: string, values?: any[]): Promise<T[]>
+  queryOne<T = Record<string, unknown>>(sql: string, values?: any[]): Promise<T | null>
+  execute(sql: string, values?: any[]): Promise<{ affectedRows: number }>
+}
+
+// 扩展 global 类型
+declare global {
+  // eslint-disable-next-line no-var
+  var db: DatabaseModule
 }

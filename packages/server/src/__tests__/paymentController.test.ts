@@ -2,36 +2,34 @@
  * 支付系统单元测试
  */
 
-import { PaymentController } from '../controllers/paymentController'
+import PaymentController from '../controllers/paymentController'
 
 // Mock models
-jest.mock('../models/Child', () => ({
-  ChildModel: {
-    isOwnedByUser: jest.fn(),
-  }
-}))
-
-jest.mock('../models/Membership', () => ({
+jest.mock('../models', () => ({
   MembershipModel: {
-    createOrder: jest.fn(),
-    getOrder: jest.fn(),
-    updateOrderStatus: jest.fn(),
-    activateMembership: jest.fn(),
-    getChildMembership: jest.fn(),
+    create: jest.fn(),
+    upsert: jest.fn(),
+    findOne: jest.fn(),
     toPublic: jest.fn((m) => m),
-  }
+  },
+  OrderModel: {
+    create: jest.fn(),
+    updatePayStatus: jest.fn(),
+    findById: jest.fn(),
+    toPublic: jest.fn((m) => m),
+  },
 }))
 
 // Mock database
 jest.mock('../config/database', () => ({
   query: jest.fn(),
   queryOne: jest.fn(),
+  execute: jest.fn(),
 }))
 
 describe('PaymentController', () => {
   let mockReq: any
   let mockRes: any
-  let mockNext: jest.Mock
 
   beforeEach(() => {
     mockReq = {
@@ -44,7 +42,6 @@ describe('PaymentController', () => {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
     }
-    mockNext = jest.fn()
   })
 
   afterEach(() => {
@@ -53,223 +50,263 @@ describe('PaymentController', () => {
 
   describe('createOrder', () => {
     it('should create order successfully', async () => {
-      const { MembershipModel } = require('../models/Membership')
-      const mockOrder = {
-        id: 1,
-        order_no: 'ORD20240503001',
-        package_id: 1,
-        amount: 19900,
-        status: 'pending',
-      }
-      MembershipModel.createOrder.mockResolvedValueOnce(mockOrder)
+      const { OrderModel } = require('../models')
+      OrderModel.create.mockResolvedValueOnce({ id: 1, order_no: 'ORD123' })
 
       mockReq.body = {
-        childId: 1,
-        packageId: 1,
-        paymentMethod: 'wechat',
+        product_type: 'membership',
+        product_id: 'yearly_basic',
+        product_name: '年度会员',
+        amount: 199,
+        child_id: 1,
       }
 
-      await PaymentController.createOrder(mockReq, mockRes, mockNext)
+      await PaymentController.createOrder(mockReq, mockRes)
 
-      expect(MembershipModel.createOrder).toHaveBeenCalledWith(1, {
-        childId: 1,
-        packageId: 1,
-        paymentMethod: 'wechat',
-      })
-      expect(mockRes.status).toHaveBeenCalledWith(201)
+      expect(OrderModel.create).toHaveBeenCalled()
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          code: 0,
+          success: true,
           data: expect.objectContaining({
-            orderNo: 'ORD20240503001',
-          })
+            order_no: expect.stringContaining('ORDER_'),
+            amount: 199,
+          }),
         })
       )
     })
 
-    it('should reject missing childId', async () => {
-      mockReq.body = {
-        packageId: 1,
-        paymentMethod: 'wechat',
-      }
+    it('should reject unauthenticated request', async () => {
+      mockReq.userId = undefined
+      mockReq.body = { amount: 199 }
 
-      await PaymentController.createOrder(mockReq, mockRes, mockNext)
+      await PaymentController.createOrder(mockReq, mockRes)
 
-      expect(mockRes.status).toHaveBeenCalledWith(400)
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({ code: 1 })
-      )
-    })
-
-    it('should reject missing packageId', async () => {
-      mockReq.body = {
-        childId: 1,
-        paymentMethod: 'wechat',
-      }
-
-      await PaymentController.createOrder(mockReq, mockRes, mockNext)
-
-      expect(mockRes.status).toHaveBeenCalledWith(400)
-    })
-
-    it('should reject invalid paymentMethod', async () => {
-      mockReq.body = {
-        childId: 1,
-        packageId: 1,
-        paymentMethod: 'bitcoin',
-      }
-
-      await PaymentController.createOrder(mockReq, mockRes, mockNext)
-
-      expect(mockRes.status).toHaveBeenCalledWith(400)
+      expect(mockRes.status).toHaveBeenCalledWith(401)
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: '支付方式仅支持 wechat'
+          success: false,
+          message: '未登录',
         })
       )
     })
 
-    it('should handle server errors', async () => {
-      const { MembershipModel } = require('../models/Membership')
-      MembershipModel.createOrder.mockRejectedValueOnce(new Error('DB error'))
+    it('should use default values when body is empty', async () => {
+      const { OrderModel } = require('../models')
+      OrderModel.create.mockResolvedValueOnce({ id: 1, order_no: 'ORD123' })
 
-      mockReq.body = {
-        childId: 1,
-        packageId: 1,
-        paymentMethod: 'wechat',
-      }
+      mockReq.body = {}
 
-      await PaymentController.createOrder(mockReq, mockRes, mockNext)
+      await PaymentController.createOrder(mockReq, mockRes)
 
-      expect(mockNext).toHaveBeenCalledWith(expect.any(Error))
+      expect(OrderModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          product_type: 'membership',
+          product_id: 'yearly_basic',
+          product_name: '年度会员',
+          amount: 199,
+        })
+      )
     })
   })
 
-  describe('getOrder', () => {
+  describe('getOrderStatus', () => {
     it('should return order details successfully', async () => {
-      const { MembershipModel } = require('../models/Membership')
-      const mockOrder = {
-        id: 1,
-        order_no: 'ORD20240503001',
-        amount: 19900,
-        status: 'pending',
-      }
-      MembershipModel.getOrder.mockResolvedValueOnce(mockOrder)
+      const db = require('../config/database')
+      db.queryOne.mockResolvedValueOnce({
+        order_no: 'ORD123',
+        pay_status: 0,
+        pay_amount: 199,
+        created_at: new Date(),
+        pay_time: null,
+      })
 
-      mockReq.params = { orderId: '1' }
+      mockReq.params = { orderNo: 'ORD123' }
+      mockReq.userId = 1
 
-      await PaymentController.getOrder(mockReq, mockRes, mockNext)
+      await PaymentController.getOrderStatus(mockReq, mockRes)
 
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          code: 0,
+          success: true,
           data: expect.objectContaining({
-            orderNo: 'ORD20240503001',
-          })
+            order_no: 'ORD123',
+            pay_status: 0,
+          }),
         })
       )
     })
 
     it('should return 404 when order not found', async () => {
-      const { MembershipModel } = require('../models/Membership')
-      MembershipModel.getOrder.mockResolvedValueOnce(null)
+      const db = require('../config/database')
+      db.queryOne.mockResolvedValueOnce(null)
 
-      mockReq.params = { orderId: '999' }
+      mockReq.params = { orderNo: 'INVALID' }
+      mockReq.userId = 1
 
-      await PaymentController.getOrder(mockReq, mockRes, mockNext)
+      await PaymentController.getOrderStatus(mockReq, mockRes)
 
       expect(mockRes.status).toHaveBeenCalledWith(404)
-    })
-  })
-
-  describe('notifyPayment', () => {
-    it('should handle WeChat payment callback successfully', async () => {
-      const { MembershipModel } = require('../models/Membership')
-      MembershipModel.updateOrderStatus.mockResolvedValueOnce(undefined)
-      MembershipModel.activateMembership.mockResolvedValueOnce(undefined)
-
-      mockReq.body = {
-        order_no: 'ORD20240503001',
-        transaction_id: 'WX20240503001',
-        status: 'SUCCESS',
-      }
-
-      await PaymentController.notifyPayment(mockReq, mockRes, mockNext)
-
-      expect(MembershipModel.updateOrderStatus).toHaveBeenCalledWith(
-        'ORD20240503001',
-        'paid',
-        'WX20240503001'
-      )
       expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({ code: 0 })
+        expect.objectContaining({
+          success: false,
+          message: '订单不存在',
+        })
       )
-    })
-
-    it('should handle payment failure callback', async () => {
-      const { MembershipModel } = require('../models/Membership')
-      MembershipModel.updateOrderStatus.mockResolvedValueOnce(undefined)
-
-      mockReq.body = {
-        order_no: 'ORD20240503001',
-        status: 'FAIL',
-      }
-
-      await PaymentController.notifyPayment(mockReq, mockRes, mockNext)
-
-      expect(MembershipModel.updateOrderStatus).toHaveBeenCalledWith(
-        'ORD20240503001',
-        'failed',
-        undefined
-      )
-    })
-
-    it('should handle missing order_no in callback', async () => {
-      mockReq.body = {
-        status: 'SUCCESS',
-      }
-
-      await PaymentController.notifyPayment(mockReq, mockRes, mockNext)
-
-      expect(mockRes.status).toHaveBeenCalledWith(400)
     })
   })
 
-  describe('getPaymentStatus', () => {
-    it('should return payment status successfully', async () => {
-      const { MembershipModel } = require('../models/Membership')
-      const mockOrder = {
-        id: 1,
-        order_no: 'ORD20240503001',
-        status: 'paid',
-        transaction_id: 'WX20240503001',
-      }
-      MembershipModel.getOrder.mockResolvedValueOnce(mockOrder)
+  describe('initiatePayment', () => {
+    it('should return payment params for pending order', async () => {
+      const db = require('../config/database')
+      db.queryOne.mockResolvedValueOnce({
+        order_no: 'ORD123',
+        pay_status: 0,
+        pay_amount: 199,
+        product_name: '年度会员',
+      })
 
-      mockReq.params = { orderId: '1' }
+      mockReq.userId = 1
+      mockReq.body = { order_no: 'ORD123' }
 
-      await PaymentController.getPaymentStatus(mockReq, mockRes, mockNext)
+      await PaymentController.initiatePayment(mockReq, mockRes)
 
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          code: 0,
+          success: true,
           data: expect.objectContaining({
-            status: 'paid',
-            transactionId: 'WX20240503001',
-          })
+            payment_params: expect.objectContaining({
+              order_no: 'ORD123',
+              total_fee: 19900,
+            }),
+            prepay_id: expect.stringContaining('prepay_'),
+          }),
         })
       )
     })
 
-    it('should return 404 when order not found', async () => {
-      const { MembershipModel } = require('../models/Membership')
-      MembershipModel.getOrder.mockResolvedValueOnce(null)
+    it('should return already paid for completed order', async () => {
+      const db = require('../config/database')
+      db.queryOne.mockResolvedValueOnce({
+        order_no: 'ORD123',
+        pay_status: 1,
+        pay_amount: 199,
+        product_name: '年度会员',
+      })
 
-      mockReq.params = { orderId: '999' }
+      mockReq.userId = 1
+      mockReq.body = { order_no: 'ORD123' }
 
-      await PaymentController.getPaymentStatus(mockReq, mockRes, mockNext)
+      await PaymentController.initiatePayment(mockReq, mockRes)
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: '订单已支付',
+          data: { pay_status: 'paid' },
+        })
+      )
+    })
+
+    it('should reject unauthenticated request', async () => {
+      mockReq.userId = undefined
+      mockReq.body = { order_no: 'ORD123' }
+
+      await PaymentController.initiatePayment(mockReq, mockRes)
+
+      expect(mockRes.status).toHaveBeenCalledWith(401)
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: '未登录',
+        })
+      )
+    })
+
+    it('should return 404 for non-existent order', async () => {
+      const db = require('../config/database')
+      db.queryOne.mockResolvedValueOnce(null)
+
+      mockReq.userId = 1
+      mockReq.body = { order_no: 'INVALID' }
+
+      await PaymentController.initiatePayment(mockReq, mockRes)
 
       expect(mockRes.status).toHaveBeenCalledWith(404)
+    })
+  })
+
+  describe('handleCallback', () => {
+    it('should handle successful payment callback', async () => {
+      const { OrderModel, MembershipModel } = require('../models')
+      const db = require('../config/database')
+
+      OrderModel.updatePayStatus.mockResolvedValueOnce(undefined)
+      MembershipModel.upsert.mockResolvedValueOnce(undefined)
+
+      db.queryOne.mockResolvedValueOnce({
+        user_id: 1,
+        product_type: 'membership',
+        product_id: 'yearly',
+      })
+
+      mockReq.body = {
+        order_no: 'ORD123',
+        transaction_id: 'WX20240503001',
+        pay_status: 'SUCCESS',
+      }
+
+      await PaymentController.handleCallback(mockReq, mockRes)
+
+      expect(OrderModel.updatePayStatus).toHaveBeenCalledWith('ORD123', 1, 'WX20240503001')
+      expect(MembershipModel.upsert).toHaveBeenCalled()
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: '支付成功',
+        })
+      )
+    })
+
+    it('should handle failed payment callback', async () => {
+      const { OrderModel } = require('../models')
+
+      mockReq.body = {
+        order_no: 'ORD123',
+        transaction_id: 'WX20240503001',
+        pay_status: 'FAIL',
+      }
+
+      await PaymentController.handleCallback(mockReq, mockRes)
+
+      expect(OrderModel.updatePayStatus).not.toHaveBeenCalled()
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: '支付失败',
+        })
+      )
+    })
+
+    it('should not activate membership for non-membership orders', async () => {
+      const { OrderModel, MembershipModel } = require('../models')
+      const db = require('../config/database')
+
+      OrderModel.updatePayStatus.mockResolvedValueOnce(undefined)
+      db.queryOne.mockResolvedValueOnce({
+        user_id: 1,
+        product_type: 'game_pack',
+        product_id: 'level_pack',
+      })
+
+      mockReq.body = {
+        order_no: 'ORD123',
+        transaction_id: 'WX20240503001',
+        pay_status: 'SUCCESS',
+      }
+
+      await PaymentController.handleCallback(mockReq, mockRes)
+
+      expect(MembershipModel.upsert).not.toHaveBeenCalled()
     })
   })
 })

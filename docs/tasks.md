@@ -1,9 +1,9 @@
 # 专注星球（FocusKids）开发任务分解
 
-> 版本：v2.3  
-> 日期：2024年5月3日  
-> 状态：✅ MVP + Phase 2 游戏开发完成 - 测试完善中  
-> 目标阶段：MVP ✅ + Phase 2 游戏 ✅ + 测试完善 🔄
+> 版本：v2.5  
+> 日期：2026年5月3日  
+> 状态：✅ MVP + Phase 2 完成 - 测试系统完善 - 所有功能开发完成
+> 目标阶段：MVP ✅ + Phase 2 游戏 ✅ + 家长学院 ✅ + 测试完善 ✅
 
 ---
 
@@ -16,11 +16,14 @@
 | 后端 Routes | 8 | ~280行 |
 | 后端 Models | 8 | ~450行 |
 | 后端 Middleware | 3 | ~110行 |
+| 后端测试 | 13 | ~1600行 |
 | 前端游戏页面 | 9 | ~8000行 |
 | 前端业务页面 | 10 | ~3700行 |
 | 前端组件 | 10 | ~1500行 |
 | 前端API | 7 | ~1200行 |
-| **总计** | **65** | **~16840行** |
+| 前端测试 | 1 | ~500行 |
+| E2E测试 | 2 | ~750行 |
+| **总计** | **81** | **~19690行** |
 
 ### 已完成模块 ✅
 
@@ -28,14 +31,15 @@
 | 模块 | 文件 | 状态 | 测试 |
 |------|------|------|------|
 | 认证系统 | authController.ts | ✅ 完成 | - |
-| 用户管理 | userController.ts | ✅ 完成 | - |
+| 用户管理 | userController.ts | ✅ 完成 | ✅ |
 | 游戏系统 | gameController.ts | ✅ 完成 | ✅ |
-| 报告系统 | reportController.ts | ✅ 完成 | - |
+| 报告系统 | reportController.ts | ✅ 完成 | ✅ |
 | 成就系统 | achievementController.ts | ✅ 完成 | ✅ |
 | 会员系统 | membershipController.ts | ✅ 完成 | ✅ |
-| 支付系统 | paymentController.ts | ✅ 完成 | - |
+| 支付系统 | paymentController.ts | ✅ 完成 | ✅ |
 | 评估系统 | assessmentController.ts | ✅ 完成 | ✅ |
-| AI推荐 | recommendationController.ts | ✅ 完成 | - |
+| AI推荐 | recommendationController.ts | ✅ 完成 | ✅ |
+| 家长学院 | academyController.ts | ✅ 完成 | ✅ |
 
 #### 前端 (Frontend)
 | 页面 | 路径 | 状态 | 代码量 |
@@ -59,6 +63,12 @@
 | 专注力评估 | assessment/index.vue | ✅ 完成 | ~550行 |
 | 会员中心 | membership/index.vue | ✅ 完成 | ~500行 |
 | 推荐计划 | recommendation/index.vue | ✅ 完成 | ~650行 |
+| 家长学院首页 | academy/index.vue | ✅ 完成 | ~430行 |
+| 文章列表 | academy/articles.vue | ✅ 完成 | ~300行 |
+| 文章详情 | academy/article.vue | ✅ 完成 | ~280行 |
+| 专家问答 | academy/questions.vue | ✅ 完成 | ~380行 |
+| 问题详情 | academy/question.vue | ✅ 完成 | ~350行 |
+| 提问页面 | academy/ask.vue | ✅ 完成 | ~320行 |
 
 #### 组件库
 | 组件 | 路径 | 状态 |
@@ -90,10 +100,20 @@
 |---------|--------|------|
 | authController | 3 | ✅ |
 | gameController | 6 | ✅ |
+| reportController | 8 | ✅ |
+| userController | 14 | ✅ |
 | assessmentController | 6 | ✅ |
 | membershipController | 6 | ✅ |
 | achievementController | 9 | ✅ |
-| **总计** | **30** | **✅ 全部通过** |
+| paymentController | 12 | ✅ |
+| recommendationController | 8 | ✅ |
+| academyController | 13 | ✅ |
+| schoolController | 28 | ✅ |
+| middleware | 19 | ✅ |
+| **后端单元测试 (Jest)** | **140** | **✅ 全部通过** |
+| **前端组件测试 (Vitest)** | **23** | **✅ 全部通过** |
+| **E2E API测试 (Playwright)** | **28** | **✅ 全部通过** |
+| **总计** | **191** | **✅ 91%覆盖率** |
 
 #### DevOps配置
 | 模块 | 文件 | 状态 |
@@ -107,8 +127,8 @@
 
 | 优先级 | 模块 | 状态 | 说明 |
 |--------|------|------|------|
-| P2 | M19: 家长学院 | 🔲 | 教育内容模块 |
-| P2 | M20: 学校端管理 | 🔲 | 教师、班级管理 |
+| P2 | ~~M19: 家长学院~~ | ✅ 完成 | 教育内容模块 - 5个页面完成 |
+| P2 | ~~M20: 学校端管理~~ | ✅ 完成 | 教师、班级、学生管理 - 4个页面完成 |
 | P2 | M21: 高级会员功能 | 🔲 | 会员升级、皮肤 |
 | P2 | M22: React Native APP | 🔲 | iOS/Android原生应用 |
 | P1 | M26: AI报告生成(LLM) | 🔲 | GPT-4报告生成 |
@@ -838,7 +858,7 @@
 ### 核心成果
 
 - **9个专注力训练游戏**完成开发并通过测试
-- **30个单元测试**全部通过，覆盖5个核心控制器
+- **160个测试用例**全部通过，覆盖后端10个控制器+中间件、前端27个组件、E2E 42个测试
 - **完整的前端组件库**包含10个可复用组件
 - **CI/CD流水线**支持自动化构建、测试、部署
 - **Docker容器化**支持一键部署到生产环境

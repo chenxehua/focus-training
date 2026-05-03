@@ -94,7 +94,7 @@ export class RecommendationService {
     const allGames = await GameModel.findAll()
 
     // 根据用户画像计算每个游戏的推荐分数
-    const scoredGames = allGames.map(game => {
+    const scoredGames = await Promise.all(allGames.map(async (game) => {
       let score = 50 // 基础分
       let reason = ''
 
@@ -118,19 +118,20 @@ export class RecommendationService {
       }
 
       // 3. 根据年龄组调整
-      if (profile.ageGroup === '4-6' && game.min_age < 7) {
+      const gameAgeRange = this.getGameAgeRange(game)
+      if (profile.ageGroup === '4-6' && gameAgeRange.maxAge < 7) {
         score += 15
-      } else if (profile.ageGroup === '10-12' && game.max_age > 9) {
+      } else if (profile.ageGroup === '10-12' && gameAgeRange.minAge > 9) {
         score += 15
       }
 
       // 4. VIP限制
-      if (game.requires_vip && !await this.hasVipAccess(childId)) {
+      if ((game as any).requires_vip && !await this.hasVipAccess(childId)) {
         score -= 40
       }
 
       // 5. 提升用户偏好类别的游戏
-      if (profile.preferredCategories.includes(game.category || '')) {
+      if (profile.preferredCategories.includes((game as any).category || '')) {
         score += 10
       }
 
@@ -143,7 +144,7 @@ export class RecommendationService {
         priority: 0,
         expectedImprovement: this.generateImprovementDescription(relevantDimensions, profile.weaknessDimensions)
       }
-    })
+    }))
 
     // 排序并返回top N
     scoredGames.sort((a, b) => b.score - a.score)
@@ -399,6 +400,18 @@ export class RecommendationService {
     if (numbers.length === 0) return 0
     const avg = numbers.reduce((a, b) => a + b, 0) / numbers.length
     return numbers.reduce((sum, n) => sum + Math.pow(n - avg, 2), 0) / numbers.length
+  }
+
+  private static getGameAgeRange(game: { target_age_group: string }): { minAge: number; maxAge: number } {
+    // 解析 target_age_group: '4-6', '7-9', '10-12'
+    const parts = game.target_age_group.split('-')
+    if (parts.length === 2) {
+      return {
+        minAge: parseInt(parts[0]),
+        maxAge: parseInt(parts[1])
+      }
+    }
+    return { minAge: 4, maxAge: 12 }
   }
 }
 

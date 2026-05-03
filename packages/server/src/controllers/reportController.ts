@@ -154,4 +154,90 @@ export class ReportController {
       next(error)
     }
   }
+
+  /**
+   * 获取报告列表
+   * GET /api/report/list
+   */
+  static async getReportList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.userId!
+      const page = parseInt(req.query['page'] as string) || 1
+      const pageSize = parseInt(req.query['pageSize'] as string) || 10
+      const childId = parseInt(req.query['childId'] as string) || 0
+
+      const reports = await FocusReportModel.findByUserId(userId, page, pageSize, childId)
+
+      res.json(successResponse(reports))
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  /**
+   * 获取报告详情
+   * GET /api/report/:reportId
+   */
+  static async getReportDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.userId!
+      const reportId = parseInt(req.params['reportId'] || '0', 10)
+
+      const report = await FocusReportModel.findByIdWithAuth(reportId, userId)
+      if (!report) {
+        throw new AppError('报告不存在', 404)
+      }
+
+      res.json(successResponse(report))
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  /**
+   * 获取儿童最新报告
+   * GET /api/report/child/:childId/latest
+   */
+  static async getLatestReport(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.userId!
+      const childId = parseInt(req.params['childId'] || '0', 10)
+
+      // 验证所有权
+      const isOwned = await ChildModel.isOwnedByUser(childId, userId)
+      if (!isOwned) {
+        throw new AppError('无权查看该孩子数据', 403)
+      }
+
+      const report = await FocusReportModel.findLatestByChildId(childId)
+
+      res.json(successResponse(report))
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  /**
+   * 生成报告
+   * POST /api/report/generate
+   */
+  static async generateReport(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.userId!
+      const childId = parseInt(req.body['childId'] || '0', 10)
+      const reportType = req.body['reportType'] as 'daily' | 'weekly' || 'daily'
+
+      // 验证所有权
+      const isOwned = await ChildModel.isOwnedByUser(childId, userId)
+      if (!isOwned) {
+        throw new AppError('无权操作该孩子数据', 403)
+      }
+
+      const report = await FocusReportModel.generateForChild(childId, reportType)
+
+      res.json(successResponse(report, '报告生成成功'))
+    } catch (error) {
+      next(error)
+    }
+  }
 }
