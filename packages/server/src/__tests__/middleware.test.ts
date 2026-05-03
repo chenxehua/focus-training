@@ -18,6 +18,14 @@ jest.mock('../config', () => ({
   config: mockConfig,
 }))
 
+// Mock database module
+jest.mock('../config/database', () => ({
+  query: jest.fn(),
+  queryOne: jest.fn(),
+  execute: jest.fn(),
+  pool: {},
+}))
+
 // Import after mocks are set up
 import { authMiddleware, generateToken } from '../middleware/auth'
 import { errorHandler, AppError } from '../middleware/errorHandler'

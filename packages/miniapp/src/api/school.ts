@@ -1,21 +1,21 @@
 /**
  * 学校管理API
  */
-import request from './request'
+import { get, post } from './request'
 
 // 获取学校信息
 export const getSchool = (schoolId: number) => {
-  return request.get(`/school/schools/${schoolId}`)
+  return get(`/school/schools/${schoolId}`)
 }
 
 // 获取学校列表
 export const getSchoolList = (params?: { status?: number; page?: number; page_size?: number }) => {
-  return request.get('/school/schools', params)
+  return get('/school/schools', params)
 }
 
 // 创建学校
 export const createSchool = (data: any) => {
-  return request.post('/school/schools', data)
+  return post('/school/schools', data)
 }
 
 // 审核学校

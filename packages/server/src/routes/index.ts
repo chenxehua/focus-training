@@ -9,6 +9,7 @@ import assessmentRouter from './assessment'
 import recommendationRouter from './recommendation'
 import academyRouter from './academy'
 import schoolRouter from './school'
+import adminRouter from './admin'
 
 const router = Router()
 
@@ -22,6 +23,7 @@ router.use('/assessment', assessmentRouter)
 router.use('/recommendation', recommendationRouter)
 router.use('/academy', academyRouter)
 router.use('/school', schoolRouter)
+router.use('/admin', adminRouter)
 
 // 健康检查
 router.get('/health', (_req, res) => {

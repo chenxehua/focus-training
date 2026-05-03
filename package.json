@@ -7,9 +7,9 @@
   ],
   "scripts": {
     "dev:server": "npm run dev --workspace=packages/server",
-    "dev:miniapp": "npm run dev:mp-weixin --workspace=packages/miniapp",
+    "dev:miniapp": "npm run dev --workspace=packages/miniapp",
     "build:server": "npm run build --workspace=packages/server",
-    "build:miniapp": "npm run build:mp-weixin --workspace=packages/miniapp",
+    "build:miniapp": "npm run build --workspace=packages/miniapp",
     "install:all": "npm install"
   },
   "engines": {

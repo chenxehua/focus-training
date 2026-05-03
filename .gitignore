@@ -7,6 +7,9 @@ dist/
 packages/miniapp/dist/
 packages/miniapp/unpackage/
 
+# test coverage
+packages/server/coverage/
+
 # server build
 packages/server/dist/
 
@@ -26,3 +29,4 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+.agent_memory.json

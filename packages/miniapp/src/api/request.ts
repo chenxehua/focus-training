@@ -1,6 +1,6 @@
 import { getStorage } from '@/utils/storage'
 
-const BASE_URL = 'http://localhost:3003' // 开发环境地址，生产环境改为 https://api.focustraining.com
+const BASE_URL = 'http://localhost:3000' // 开发环境地址
 
 const TOKEN_KEY = 'focus_token'
 

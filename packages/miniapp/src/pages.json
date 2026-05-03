@@ -9,6 +9,14 @@
       }
     },
     {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/games/index",
       "style": {
         "navigationBarTitleText": "游戏广场",

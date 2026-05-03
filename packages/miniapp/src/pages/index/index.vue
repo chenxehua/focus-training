@@ -37,7 +37,7 @@ function navigateToGame(game: GameInfo) {
 }
 
 function navigateToGames() {
-  uni.switchTab({ url: '/pages/games/index' })
+  uni.navigateTo({ url: '/pages/games/index' })
 }
 
 async function loadData() {

@@ -1,13 +1,13 @@
 /**
  * 家长学院 API
  */
-import request from './request'
+import { get, post } from './request'
 
 /**
  * 获取所有分类
  */
 export function getAcademyCategories() {
-  return request.get('/academy/categories')
+  return get('/academy/categories')
 }
 
 /**
@@ -107,7 +107,7 @@ export function createQuestion(data: {
   categoryId: number
   images?: string
 }) {
-  return request.post('/academy/questions', data)
+  return post('/academy/questions', data)
 }
 
 /**

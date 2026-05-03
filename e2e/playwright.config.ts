@@ -6,7 +6,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  reporter: 'list',
   
   use: {
     baseURL: process.env.API_BASE_URL || 'http://localhost:3000',
@@ -15,13 +15,13 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: 'API Tests',
+      testMatch: /.*admin-api\.spec\.ts/,
+      use: { baseURL: process.env.API_BASE_URL || 'http://localhost:3000' },
     },
     {
-      name: 'API Tests',
-      testMatch: /.*\.api\.spec\.ts/,
-      use: { baseURL: process.env.API_BASE_URL || 'http://localhost:3000' },
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 

@@ -9,10 +9,10 @@ export const apiLimiter = rateLimit({
   legacyHeaders: false,
 })
 
-// 登录接口限流：每 15 分钟 20 次
+// 登录接口限流：每 15 分钟 200 次（测试环境增加限制）
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 200,
   message: { code: 429, message: '登录请求过于频繁，请稍后再试', data: null },
   standardHeaders: true,
   legacyHeaders: false,

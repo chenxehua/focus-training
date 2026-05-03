@@ -424,22 +424,26 @@ import { watch } from 'vue'
         >
           <view
             v-for="(row, y) in maze"
-            v-for="(cell, x) in row"
-            :key="`${x}-${y}`"
-            class="maze-cell"
-            :class="{
-              wall: cell.type === 'wall',
-              path: cell.type === 'path' || cell.type === 'start',
-              end: cell.type === 'end',
-              key: cell.type === 'key',
-              player: playerPos.x === x && playerPos.y === y,
-              visited: pathHistory.some(p => p.x === x && p.y === y)
-            }"
-            @tap="() => {}"
+            :key="`row-${y}`"
           >
-            <text v-if="cell.type === 'end'" class="cell-icon">🍯</text>
-            <text v-else-if="cell.type === 'key'" class="cell-icon">🔑</text>
-            <text v-if="playerPos.x === x && playerPos.y === y" class="player-icon">🐻</text>
+            <view
+              v-for="(cell, x) in row"
+              :key="`${x}-${y}`"
+              class="maze-cell"
+              :class="{
+                wall: cell.type === 'wall',
+                path: cell.type === 'path' || cell.type === 'start',
+                end: cell.type === 'end',
+                key: cell.type === 'key',
+                player: playerPos.x === x && playerPos.y === y,
+                visited: pathHistory.some(p => p.x === x && p.y === y)
+              }"
+              @tap="() => {}"
+            >
+              <text v-if="cell.type === 'end'" class="cell-icon">🍯</text>
+              <text v-else-if="cell.type === 'key'" class="cell-icon">🔑</text>
+              <text v-if="playerPos.x === x && playerPos.y === y" class="player-icon">🐻</text>
+            </view>
           </view>
         </view>
       </view>

@@ -28,6 +28,7 @@ export interface JwtPayload {
 
 export interface AuthRequest extends Request {
   userId?: number
+  userRole?: string
 }
 
 // ============================================================
