@@ -260,3 +260,151 @@ INSERT INTO `achievement` (`achievement_code`, `name`, `description`, `type`, `t
 ('streak_30', '坚持一个月', '连续30天完成训练', 'streak', 'advanced', '{"type": "streak", "value": 30}', 500, 8),
 ('star_100', '百星闪耀', '累计获得100颗星星', 'milestone', 'intermediate', '{"type": "stars", "value": 100}', 200, 9),
 ('schulte_master', '舒尔特大师', '舒尔特方格达到9级难度', 'milestone', 'advanced', '{"type": "game_level", "game": "schulte", "level": 9}', 300, 10);
+-- ============================================================
+-- 家长学院表
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `academy_category` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `category_name` VARCHAR(64) NOT NULL COMMENT '分类名称',
+  `category_name_en` VARCHAR(64) DEFAULT NULL COMMENT '分类英文名',
+  `category_icon` VARCHAR(255) DEFAULT NULL COMMENT '分类图标',
+  `sort_order` INT DEFAULT 0 COMMENT '排序',
+  `article_count` INT DEFAULT 0 COMMENT '文章数量',
+  `is_active` TINYINT DEFAULT 1 COMMENT '是否启用: 0-禁用, 1-启用',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_sort_order (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='家长学院分类表';
+
+CREATE TABLE IF NOT EXISTS `academy_article` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `category_id` INT UNSIGNED NOT NULL COMMENT '分类ID',
+  `title` VARCHAR(128) NOT NULL COMMENT '标题',
+  `cover_image` VARCHAR(255) DEFAULT NULL COMMENT '封面图',
+  `summary` TEXT COMMENT '摘要',
+  `content` TEXT COMMENT '内容(富文本)',
+  `author` VARCHAR(64) DEFAULT NULL COMMENT '作者',
+  `tags` VARCHAR(255) DEFAULT NULL COMMENT '标签,逗号分隔',
+  `read_count` INT DEFAULT 0 COMMENT '阅读数',
+  `like_count` INT DEFAULT 0 COMMENT '点赞数',
+  `is_featured` TINYINT DEFAULT 0 COMMENT '是否推荐: 0-否, 1-是',
+  `reading_time` INT DEFAULT 5 COMMENT '阅读时长(分钟)',
+  `is_published` TINYINT DEFAULT 0 COMMENT '是否发布: 0-草稿, 1-已发布',
+  `is_deleted` TINYINT DEFAULT 0 COMMENT '是否删除: 0-否, 1-是',
+  `publish_date` DATETIME DEFAULT NULL COMMENT '发布时间',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`category_id`) REFERENCES `academy_category`(`id`) ON DELETE CASCADE,
+  INDEX idx_category_id (`category_id`),
+  INDEX idx_is_published (`is_published`),
+  INDEX idx_publish_date (`publish_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='家长学院文章表';
+
+CREATE TABLE IF NOT EXISTS `academy_question_category` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `category_name` VARCHAR(64) NOT NULL COMMENT '分类名称',
+  `icon` VARCHAR(255) DEFAULT NULL COMMENT '图标',
+  `sort_order` INT DEFAULT 0 COMMENT '排序',
+  `is_active` TINYINT DEFAULT 1 COMMENT '是否启用: 0-禁用, 1-启用',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='问答分类表';
+
+CREATE TABLE IF NOT EXISTS `academy_question` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT UNSIGNED NOT NULL COMMENT '提问用户ID',
+  `category_id` INT UNSIGNED DEFAULT NULL COMMENT '分类ID',
+  `question_title` VARCHAR(128) NOT NULL COMMENT '问题标题',
+  `question_content` TEXT COMMENT '问题内容',
+  `images` TEXT COMMENT '图片JSON数组',
+  `status` TINYINT DEFAULT 0 COMMENT '状态: 0-待回答, 1-已回答, 2-已关闭',
+  `view_count` INT DEFAULT 0 COMMENT '浏览数',
+  `like_count` INT DEFAULT 0 COMMENT '点赞数',
+  `answered_at` DATETIME DEFAULT NULL COMMENT '回答时间',
+  `is_deleted` TINYINT DEFAULT 0 COMMENT '是否删除: 0-否, 1-是',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_user_id (`user_id`),
+  INDEX idx_category_id (`category_id`),
+  INDEX idx_status (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='问答表';
+
+CREATE TABLE IF NOT EXISTS `academy_answer` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `question_id` INT UNSIGNED NOT NULL COMMENT '问题ID',
+  `user_id` INT UNSIGNED NOT NULL COMMENT '回答用户ID',
+  `answer_content` TEXT NOT NULL COMMENT '回答内容',
+  `is_expert` TINYINT DEFAULT 0 COMMENT '是否专家回答: 0-否, 1-是',
+  `is_official` TINYINT DEFAULT 0 COMMENT '是否官方回答: 0-否, 1-是',
+  `like_count` INT DEFAULT 0 COMMENT '点赞数',
+  `is_deleted` TINYINT DEFAULT 0 COMMENT '是否删除: 0-否, 1-是',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`question_id`) REFERENCES `academy_question`(`id`) ON DELETE CASCADE,
+  INDEX idx_question_id (`question_id`),
+  INDEX idx_is_expert (`is_expert`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回答表';
+
+-- ============================================================
+-- 学校管理表
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `school` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `school_name` VARCHAR(128) NOT NULL COMMENT '学校名称',
+  `school_code` VARCHAR(32) UNIQUE COMMENT '学校代码',
+  `province` VARCHAR(32) DEFAULT NULL COMMENT '省份',
+  `city` VARCHAR(32) DEFAULT NULL COMMENT '城市',
+  `district` VARCHAR(32) DEFAULT NULL COMMENT '区县',
+  `address` VARCHAR(255) DEFAULT NULL COMMENT '详细地址',
+  `contact_name` VARCHAR(64) DEFAULT NULL COMMENT '联系人',
+  `contact_phone` VARCHAR(20) DEFAULT NULL COMMENT '联系电话',
+  `status` TINYINT DEFAULT 0 COMMENT '状态: 0-待审核, 1-已通过, 2-已拒绝',
+  `student_count` INT DEFAULT 0 COMMENT '学生数',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_school_code (`school_code`),
+  INDEX idx_status (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学校表';
+
+CREATE TABLE IF NOT EXISTS `teacher` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT UNSIGNED NOT NULL COMMENT '用户ID',
+  `school_id` INT UNSIGNED NOT NULL COMMENT '学校ID',
+  `teacher_name` VARCHAR(64) NOT NULL COMMENT '教师姓名',
+  `subject` VARCHAR(32) DEFAULT NULL COMMENT '科目',
+  `role` TINYINT DEFAULT 2 COMMENT '角色: 1-管理员, 2-班主任, 3-科目老师, 4-心理老师',
+  `status` TINYINT DEFAULT 1 COMMENT '状态: 0-禁用, 1-正常',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`school_id`) REFERENCES `school`(`id`) ON DELETE CASCADE,
+  INDEX idx_user_id (`user_id`),
+  INDEX idx_school_id (`school_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教师表';
+
+CREATE TABLE IF NOT EXISTS `class` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `school_id` INT UNSIGNED NOT NULL COMMENT '学校ID',
+  `class_name` VARCHAR(64) NOT NULL COMMENT '班级名称',
+  `grade` VARCHAR(16) DEFAULT NULL COMMENT '年级',
+  `year` INT DEFAULT NULL COMMENT '学年',
+  `capacity` INT DEFAULT 50 COMMENT '容量',
+  `student_count` INT DEFAULT 0 COMMENT '学生数',
+  `teacher_id` INT UNSIGNED DEFAULT NULL COMMENT '班主任ID',
+  `status` TINYINT DEFAULT 1 COMMENT '状态: 0-禁用, 1-正常',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`school_id`) REFERENCES `school`(`id`) ON DELETE CASCADE,
+  INDEX idx_school_id (`school_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='班级表';
+
+CREATE TABLE IF NOT EXISTS `class_student` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `class_id` INT UNSIGNED NOT NULL COMMENT '班级ID',
+  `child_id` INT UNSIGNED NOT NULL COMMENT '学生ID',
+  `join_date` DATE DEFAULT NULL COMMENT '加入日期',
+  `status` TINYINT DEFAULT 1 COMMENT '状态: 0-离班, 1-在读',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`class_id`) REFERENCES `class`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`child_id`) REFERENCES `child`(`id`) ON DELETE CASCADE,
+  UNIQUE KEY uk_class_child (`class_id`, `child_id`),
+  INDEX idx_child_id (`child_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='班级学生表';
