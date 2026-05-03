@@ -194,7 +194,7 @@ const menuItems = [
 
     <!-- 添加孩子弹窗 -->
     <view v-if="showAddChildModal" class="modal-overlay" @tap.self="showAddChildModal = false">
-      <view class="modal">
+      <view class="modal" @tap.stop="() => {}">
         <text class="modal-title">添加孩子信息</text>
 
         <view class="form-item">
@@ -204,15 +204,16 @@ const menuItems = [
             v-model="newChild.name"
             placeholder="请输入孩子姓名"
             maxlength="10"
+            @tap.stop="() => {}"
           />
         </view>
 
         <view class="form-item">
           <text class="form-label">年龄</text>
           <view class="age-stepper">
-            <view class="stepper-btn" @tap="newChild.age = Math.max(4, newChild.age - 1); newChild.ageGroup = computeAgeGroup(newChild.age)">-</view>
+            <view class="stepper-btn" @tap.stop="newChild.age = Math.max(4, newChild.age - 1); newChild.ageGroup = computeAgeGroup(newChild.age)">-</view>
             <text class="stepper-value">{{ newChild.age }}岁</text>
-            <view class="stepper-btn" @tap="newChild.age = Math.min(12, newChild.age + 1); newChild.ageGroup = computeAgeGroup(newChild.age)">+</view>
+            <view class="stepper-btn" @tap.stop="newChild.age = Math.min(12, newChild.age + 1); newChild.ageGroup = computeAgeGroup(newChild.age)">+</view>
           </view>
         </view>
 
@@ -222,12 +223,12 @@ const menuItems = [
             <view
               class="gender-btn"
               :class="{ active: newChild.gender === 'male' }"
-              @tap="newChild.gender = 'male'"
+              @tap.stop="newChild.gender = 'male'"
             >男孩</view>
             <view
               class="gender-btn"
               :class="{ active: newChild.gender === 'female' }"
-              @tap="newChild.gender = 'female'"
+              @tap.stop="newChild.gender = 'female'"
             >女孩</view>
           </view>
         </view>
@@ -238,10 +239,10 @@ const menuItems = [
         </view>
 
         <view class="modal-actions">
-          <view class="btn-outline modal-btn" @tap="showAddChildModal = false">
+          <view class="btn-outline modal-btn" @tap.stop="showAddChildModal = false">
             <text class="btn-text-outline">取消</text>
           </view>
-          <view class="btn-primary modal-btn" @tap="handleAddChild">
+          <view class="btn-primary modal-btn" @tap.stop="handleAddChild">
             <text class="btn-text">{{ isSubmittingChild ? '添加中...' : '确认添加' }}</text>
           </view>
         </view>

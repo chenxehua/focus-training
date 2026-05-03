@@ -22,7 +22,7 @@ export class UserModel {
   }): Promise<number> {
     const result = await execute(
       'INSERT INTO user (openid, nickname, avatar, phone, role, status) VALUES (?, ?, ?, ?, ?, ?)',
-      [data.openid, data.nickname ?? null, data.avatar ?? null, data.phone ?? null, 'parent', 'active']
+      [data.openid, data.nickname ?? null, data.avatar ?? null, data.phone ?? null, 'parent', 1]
     )
     return result.insertId
   }

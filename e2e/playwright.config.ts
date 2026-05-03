@@ -6,17 +6,18 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'list',
+  reporter: 'html',
   
   use: {
     baseURL: process.env.API_BASE_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
   },
 
   projects: [
     {
       name: 'API Tests',
-      testMatch: /.*admin-api\.spec\.ts/,
+      testMatch: /.*\.spec\.ts/,
       use: { baseURL: process.env.API_BASE_URL || 'http://localhost:3000' },
     },
     {

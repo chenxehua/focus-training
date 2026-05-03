@@ -5,9 +5,19 @@
   "scripts": {
     "test": "playwright test",
     "test:api": "playwright test tests/api.spec.ts",
-    "test:e2e": "playwright test tests/e2e.spec.ts",
+    "test:login": "playwright test tests/login-full.spec.ts",
+    "test:home": "playwright test tests/index-home.spec.ts",
+    "test:profile": "playwright test tests/profile-full.spec.ts",
+    "test:academy": "playwright test tests/academy-full.spec.ts",
+    "test:school": "playwright test tests/school-full.spec.ts",
+    "test:games": "playwright test tests/game-interactions.spec.ts",
+    "test:components": "playwright test tests/components.spec.ts",
+    "test:miniapp": "playwright test tests/miniapp.spec.ts",
+    "test:all": "playwright test",
     "test:headed": "playwright test --headed",
-    "report": "playwright show-report"
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "report:html": "playwright show-report --browser chromium"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
