@@ -3,7 +3,7 @@
  */
 import { test, expect, describe } from '@playwright/test'
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3003/api'
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000/api'
 
 describe('家长学院 API E2E 测试', () => {
   

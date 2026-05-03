@@ -56,6 +56,9 @@ async function getAdminToken(): Promise<string> {
     method: 'POST',
     body: ADMIN_CREDENTIALS
   })
+  if (!response.ok || !response.json?.data?.token) {
+    throw new Error(`Failed to get admin token: ${JSON.stringify(response.json)}`)
+  }
   return response.json.data.token
 }
 
