@@ -3,16 +3,34 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "e2e"
   ],
   "scripts": {
     "dev:server": "npm run dev --workspace=packages/server",
     "dev:miniapp": "npm run dev --workspace=packages/miniapp",
     "build:server": "npm run build --workspace=packages/server",
     "build:miniapp": "npm run build --workspace=packages/miniapp",
-    "install:all": "npm install"
+    "install:all": "npm install",
+    "e2e": "npm run test --workspace=e2e",
+    "e2e:api": "npm run test:api --workspace=e2e",
+    "e2e:login": "npm run test:login --workspace=e2e",
+    "e2e:home": "npm run test:home --workspace=e2e",
+    "e2e:profile": "npm run test:profile --workspace=e2e",
+    "e2e:academy": "npm run test:academy --workspace=e2e",
+    "e2e:school": "npm run test:school --workspace=e2e",
+    "e2e:miniapp": "npm run test:miniapp --workspace=e2e",
+    "e2e:games": "npm run test:games --workspace=e2e",
+    "e2e:components": "npm run test:components --workspace=e2e",
+    "e2e:all": "npm run test:all --workspace=e2e",
+    "e2e:headed": "npm run test:headed --workspace=e2e",
+    "e2e:ui": "npm run test:ui --workspace=e2e",
+    "e2e:report": "npm run report --workspace=e2e"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "ws": "^8.20.0"
   }
 }

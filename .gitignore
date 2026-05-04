@@ -30,3 +30,14 @@ Thumbs.db
 *.sln
 *.sw?
 .agent_memory.json
+
+# Mini agent
+mini-agent/
+
+# Playwright
+playwright-report/
+playwright/.cache/
+
+# E2E test results
+e2e/test-results/
+test-results/

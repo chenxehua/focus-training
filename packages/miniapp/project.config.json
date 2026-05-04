@@ -1,25 +1,68 @@
 {
+  "description": "项目配置文件。",
+  "packOptions": {
+    "ignore": []
+  },
   "setting": {
+    "urlCheck": false,
     "es6": true,
     "postcss": true,
     "minified": true,
-    "uglifyFileName": false,
+    "newFeature": true,
+    "bigPackageSizeSupport": true,
     "enhance": true,
-    "packNpmRelationList": [],
+    "preloadBackgroundData": false,
+    "coverView": true,
+    "nodeModules": false,
+    "autoAudits": false,
+    "showShadowRootInWxmlPanel": true,
+    "scopeDataCheck": false,
+    "uglifyFileName": false,
+    "checkInvalidKey": true,
+    "checkSiteMap": true,
+    "uploadWithSourceMap": true,
+    "compileHotReLoad": false,
+    "lazyloadPlaceholderEnable": false,
+    "useMultiFrameRuntime": true,
+    "useApiHook": true,
+    "useApiHostProcess": true,
     "babelSetting": {
       "ignore": [],
       "disablePlugins": [],
       "outputPath": ""
     },
+    "enableEngineNative": false,
+    "useIsolateContext": true,
+    "userConfidentialInfo": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "disableUseStrict": false,
+    "showES6CompileOption": false,
     "useCompilerPlugins": false,
     "minifyWXML": true
   },
   "compileType": "miniprogram",
-  "simulatorPluginLibVersion": {},
-  "packOptions": {
-    "ignore": [],
-    "include": []
-  },
+  "libVersion": "",
   "appid": "wx003bb69f003c24b9",
-  "editorSetting": {}
+  "projectname": "儿童专注力训练",
+  "condition": {
+    "search": {
+      "current": -1,
+      "list": []
+    },
+    "conversation": {
+      "current": -1,
+      "list": []
+    },
+    "game": {
+      "current": -1,
+      "list": []
+    },
+    "miniprogram": {
+      "current": -1,
+      "list": []
+    }
+  },
+  "testRoot": "minitest/"
 }
