@@ -32,5 +32,8 @@
   },
   "devDependencies": {
     "ws": "^8.20.0"
+  },
+  "dependencies": {
+    "miniprogram-ci": "^2.1.31"
   }
 }

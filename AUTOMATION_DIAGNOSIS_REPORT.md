@@ -11,7 +11,7 @@
 | Item | Status | Details |
 |------|--------|---------|
 | WeChat DevTools Process | ✅ Running | 23 processes detected, PID 57124 |
-| Port 21065 | ✅ Listening | TCP on localhost |
+| Port 47748 | ✅ Listening | TCP on localhost |
 | HTTP Connection | ✅ Responding | 404 (expected for automation) |
 | WebSocket Connection | ❌ Failed | Automation not enabled |
 | Project Opened | ⚠️ Unknown | Need to verify in DevTools |
@@ -29,10 +29,10 @@ PID: 70590 - wechatwebdevtools Helper (Renderer)
 PID: 23541 - wechatwebdevtools Helper (Renderer)
 ```
 
-### Port 21065:
+### Port 47748:
 ```
 COMMAND   PID  USER   FD   TYPE  DEVICE
-wechatweb 57153 czh   58u  IPv4  TCP localhost:21065 (LISTEN)
+wechatweb 57153 czh   58u  IPv4  TCP localhost:47748 (LISTEN)
 ```
 
 ---
@@ -41,13 +41,13 @@ wechatweb 57153 czh   58u  IPv4  TCP localhost:21065 (LISTEN)
 
 ### HTTP Test:
 ```bash
-$ curl -I http://127.0.0.1:21065/
+$ curl -I http://127.0.0.1:47748/
 HTTP/1.1 404 Not Found  ✅ (Port is responding)
 ```
 
 ### WebSocket Test (via miniprogram-automator):
 ```javascript
-automator.connect({ ws: 'ws://127.0.0.1:21065' })
+automator.connect({ ws: 'ws://127.0.0.1:47748' })
 // ❌ Error: Failed connecting to undefined, 
 //    check if target project window is opened with automation enabled
 ```
@@ -63,7 +63,7 @@ The automation WebSocket connection returns 404, indicating:
 3. ⚠️ The project may be opened but automation is not started
 
 ### What Works:
-- ✅ Port 21065 is correctly listening
+- ✅ Port 47748 is correctly listening
 - ✅ WeChat DevTools is running
 - ✅ HTTP service is responding
 
@@ -122,10 +122,10 @@ npm run test:mp
 ps aux | grep wechatwebdevtools | grep -v grep
 
 # Check port status
-lsof -i :21065
+lsof -i :47748
 
 # Test HTTP connection
-curl -I http://127.0.0.1:21065/
+curl -I http://127.0.0.1:47748/
 
 # Run diagnostics
 node diagnose-automation.js
@@ -218,7 +218,7 @@ After properly enabling automation:
 
 4. **Check for port conflict:**
    ```bash
-   lsof -i :21065
+   lsof -i :47748
    # If another process is using it, free the port
    ```
 

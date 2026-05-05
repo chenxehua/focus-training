@@ -6,8 +6,8 @@
 const WebSocket = require('ws');
 const http = require('http');
 
-const WS_URL = 'ws://127.0.0.1:21065';
-const HTTP_URL = 'http://127.0.0.1:21065';
+const WS_URL = 'ws://127.0.0.1:47748';
+const HTTP_URL = 'http://127.0.0.1:47748';
 
 console.log('🧪 WeChat Developer Tools Connection Test');
 console.log('='.repeat(50));

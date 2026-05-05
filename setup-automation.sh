@@ -38,10 +38,10 @@ else
 fi
 
 # 检查端口
-if lsof -i :21065 | grep -q LISTEN; then
-    echo -e "${GREEN}✅ 自动化端口 (21065) 已开启${NC}"
+if lsof -i :47748 | grep -q LISTEN; then
+    echo -e "${GREEN}✅ 自动化端口 (47748) 已开启${NC}"
 else
-    echo -e "${RED}❌ 自动化端口 (21065) 未监听${NC}"
+    echo -e "${RED}❌ 自动化端口 (47748) 未监听${NC}"
     echo "请在开发者工具中: 设置 → 安全设置 → 开启服务端口"
     exit 1
 fi
@@ -101,7 +101,7 @@ RESPONSE=$(curl -i -N \
   --header "Connection: Upgrade" \
   --header "Sec-WebSocket-Key: test" \
   --header "Sec-WebSocket-Version: 13" \
-  http://127.0.0.1:21065 \
+  http://127.0.0.1:47748 \
   2>&1 | head -3)
 
 if echo "$RESPONSE" | grep -q "101"; then

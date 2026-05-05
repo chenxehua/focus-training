@@ -4,7 +4,7 @@
 
 ### ✅ 已确认正常
 - 微信开发者工具: **运行中** (进程数: 1)
-- 自动化端口: **21065 已监听**
+- 自动化端口: **47748 已监听**
 - 项目构建: **已完成**
 
 ### ❌ 需要配置
@@ -82,7 +82,7 @@ open /Users/czh/Documents/Claude/Projects/focus-training/packages/miniapp/dist/d
 选项: ☐ 开启服务端口
 操作: ☑️ 勾选 "开启服务端口"
 
-确认端口号显示为: 21065
+确认端口号显示为: 47748
 ```
 
 #### 3.4 保存设置
@@ -110,7 +110,7 @@ open /Users/czh/Documents/Claude/Projects/focus-training/packages/miniapp/dist/d
 应该显示:
 ```
 状态: ✅ 已连接 / Connected
-端口: ws://127.0.0.1:21065
+端口: ws://127.0.0.1:47748
 ```
 
 ---
@@ -127,7 +127,7 @@ node scripts/quick-test.js
 **预期结果**:
 ```
 ✅ 微信开发者工具正在运行
-✅ 端口 21065 正在监听
+✅ 端口 47748 正在监听
 ✅ WebSocket 连接成功!
 
 📊 诊断结果
@@ -155,7 +155,7 @@ node scripts/quick-test.js
 #### 设置位置
 ```
 工具 → 设置 → 安全设置 → 开启服务端口
-工具 → 设置 → 安全设置 → 端口号: 21065
+工具 → 设置 → 安全设置 → 端口号: 47748
 ```
 
 #### 自动化位置
@@ -212,7 +212,7 @@ node scripts/quick-test.js
 curl -i -N \
   --header "Upgrade: websocket" \
   --header "Connection: Upgrade" \
-  http://127.0.0.1:21065
+  http://127.0.0.1:47748
 
 # 期望: HTTP/1.1 101 Switching Protocols
 
@@ -309,7 +309,7 @@ cd /Users/czh/Documents/Claude/Projects/focus-training
 - [ ] **服务端口已开启**
   - 菜单: 工具 → 设置 → 安全设置
   - 勾选: 开启服务端口
-  - 端口号: 21065
+  - 端口号: 47748
 
 - [ ] **自动化功能已启用**
   - 菜单: 工具 → 自动化
@@ -318,7 +318,7 @@ cd /Users/czh/Documents/Claude/Projects/focus-training
 
 - [ ] **端口已监听**
   ```bash
-  lsof -i :21065 | grep LISTEN
+  lsof -i :47748 | grep LISTEN
   ```
 
 - [ ] **WebSocket 连接成功**
@@ -333,7 +333,7 @@ cd /Users/czh/Documents/Claude/Projects/focus-training
 ### 诊断脚本输出
 ```
 ✅ 微信开发者工具正在运行
-✅ 端口 21065 正在监听
+✅ 端口 47748 正在监听
 ✅ WebSocket 连接成功!
 
 📊 诊断结果
@@ -373,7 +373,7 @@ cd /Users/czh/Documents/Claude/Projects/focus-training
 **症状**: `Address already in use`
 
 **解决**:
-1. 检查占用进程: `lsof -i :21065`
+1. 检查占用进程: `lsof -i :47748`
 2. 结束占用进程: `kill -9 <PID>`
 3. 或更改端口（在开发者工具设置中）
 
@@ -415,7 +415,7 @@ cd /Users/czh/Documents/Claude/Projects/focus-training
 2. **查看详细日志**
    ```bash
    # 实时监控端口
-   lsof -i :21065 -r
+   lsof -i :47748 -r
    
    # 查看开发者工具日志
    open ~/Library/Logs/
@@ -455,5 +455,5 @@ cd /Users/czh/Documents/Claude/Projects/focus-training
 
 **文档更新时间**: $(date '+%Y年%m月%d日 %H:%M:%S')
 **微信 AppID**: wx003bb69f003c24b9
-**自动化端口**: 21065
+**自动化端口**: 47748
 **项目路径**: /Users/czh/Documents/Claude/Projects/focus-training/packages/miniapp

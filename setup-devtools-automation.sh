@@ -11,10 +11,10 @@ echo ""
 
 # 检查端口状态
 echo "📡 检查服务端口状态..."
-if lsof -i :21065 | grep -q LISTEN; then
-    echo "  ✅ 端口21065已开启"
+if lsof -i :47748 | grep -q LISTEN; then
+    echo "  ✅ 端口47748已开启"
 else
-    echo "  ❌ 端口21065未开启"
+    echo "  ❌ 端口47748未开启"
     echo ""
     echo "请在微信开发者工具中开启服务端口:"
     echo "  设置 → 安全设置 → 开启服务端口"
@@ -33,7 +33,7 @@ fi
 # 测试HTTP连接
 echo ""
 echo "🌐 测试HTTP连接..."
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:21065/ 2>/dev/null || echo "000")
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:47748/ 2>/dev/null || echo "000")
 if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "404" ]; then
     echo "  ✅ HTTP服务正常 (状态码: $HTTP_STATUS)"
 else
@@ -44,7 +44,7 @@ fi
 echo ""
 echo "🔌 测试WebSocket连接..."
 if command -v wscat > /dev/null 2>&1; then
-    if timeout 3 wscat -c ws://127.0.0.1:21065 2>/dev/null | head -1 > /dev/null; then
+    if timeout 3 wscat -c ws://127.0.0.1:47748 2>/dev/null | head -1 > /dev/null; then
         echo "  ✅ WebSocket连接成功"
     else
         echo "  ⚠️  WebSocket连接失败 (自动化功能可能未启用)"

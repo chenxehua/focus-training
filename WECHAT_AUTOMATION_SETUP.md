@@ -4,14 +4,14 @@
 
 ### ✅ 已确认状态
 - 微信开发者工具: **正在运行** (PID: 57153)
-- 自动化端口: **21065 已监听**
+- 自动化端口: **47748 已监听**
 - Node.js 环境: **已安装**
 - 项目依赖: **已安装** (miniprogram-automator)
 
 ### ❌ 当前问题
 自动化连接失败，错误信息:
 ```
-Failed connecting to ws://127.0.0.1:21065, 
+Failed connecting to ws://127.0.0.1:47748, 
 check if target project window is opened with automation enabled
 ```
 
@@ -71,7 +71,7 @@ open /Users/czh/Documents/Claude/Projects/focus-training/packages/miniapp/dist/d
 
 3. **开启服务端口**
    - ✅ 勾选 **"开启服务端口"**
-   - 确认端口号显示为: `21065`
+   - 确认端口号显示为: `47748`
 
 4. **保存设置**
    - 点击 **"确定"** 或 **"应用"**
@@ -89,7 +89,7 @@ open /Users/czh/Documents/Claude/Projects/focus-training/packages/miniapp/dist/d
    - 等待状态变为: **"已连接"**
 
 3. **确认端口**
-   - 检查是否连接到: `ws://127.0.0.1:21065`
+   - 检查是否连接到: `ws://127.0.0.1:47748`
    - 状态应该显示: **"已连接"** 或 **"Connected"**
 
 ### 步骤 5: 等待项目完全加载
@@ -125,7 +125,7 @@ curl -i -N \
   --header "Connection: Upgrade" \
   --header "Sec-WebSocket-Key: test" \
   --header "Sec-WebSocket-Version: 13" \
-  http://127.0.0.1:21065
+  http://127.0.0.1:47748
 ```
 
 **预期响应**: HTTP 101 Switching Protocols
@@ -182,7 +182,7 @@ npm run test:pages:games    # 游戏页面
 
 **检查**:
 ```bash
-lsof -i :21065
+lsof -i :47748
 ```
 
 **解决方案**:
@@ -195,7 +195,7 @@ lsof -i :21065
 **检查**:
 ```bash
 # 查看详细错误
-curl -v http://127.0.0.1:21065 2>&1 | head -20
+curl -v http://127.0.0.1:47748 2>&1 | head -20
 ```
 
 **解决方案**:
@@ -235,11 +235,11 @@ ping 127.0.0.1
 
 - [ ] 项目已构建 (npm run dev 或 npm run build)
 - [ ] 项目已在开发者工具中打开
-- [ ] 开发者工具已开启服务端口 (21065)
+- [ ] 开发者工具已开启服务端口 (47748)
 - [ ] 自动化功能已启用
 - [ ] 项目在模拟器中完全加载
 - [ ] 无编译错误
-- [ ] 端口已确认监听: `lsof -i :21065`
+- [ ] 端口已确认监听: `lsof -i :47748`
 
 ---
 
@@ -267,7 +267,7 @@ sleep 30
 
 # 4. 检查端口
 echo "🔌 检查端口状态..."
-lsof -i :21065
+lsof -i :47748
 
 # 5. 运行测试
 echo "🧪 运行自动化测试..."

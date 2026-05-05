@@ -5,7 +5,7 @@
 ### 1. 环境诊断
 - ✅ 创建了快速诊断脚本: `packages/miniapp/scripts/quick-test.js`
 - ✅ 验证了微信开发者工具正在运行 (PID: 57153)
-- ✅ 确认了端口 21065 已监听
+- ✅ 确认了端口 47748 已监听
 - ❌ 发现了自动化服务返回 404 (功能未启用)
 
 ### 2. 文档创建
@@ -28,7 +28,7 @@
 ### 自动化连接失败
 **错误信息**:
 ```
-Failed connecting to ws://127.0.0.1:21065
+Failed connecting to ws://127.0.0.1:47748
 WebSocket connection failed: 404
 ```
 
@@ -36,7 +36,7 @@ WebSocket connection failed: 404
 
 **诊断结果**:
 - ✅ 开发者工具运行中
-- ✅ 端口 21065 监听中
+- ✅ 端口 47748 监听中
 - ❌ 自动化功能未启用 (返回 404)
 - ❌ 项目未在开发者工具中打开
 
@@ -63,7 +63,7 @@ open /Users/czh/Documents/Claude/Projects/focus-training/packages/miniapp/dist/d
 1. 点击 **工具** → **设置** (或按 Cmd+,)
 2. 选择 **安全设置**
 3. ✅ 勾选 **开启服务端口**
-4. 确认端口号: **21065**
+4. 确认端口号: **47748**
 5. 点击 **确定**
 
 #### 步骤 3: 开启自动化
@@ -80,7 +80,7 @@ node scripts/quick-test.js
 预期输出:
 ```
 ✅ 微信开发者工具正在运行
-✅ 端口 21065 正在监听
+✅ 端口 47748 正在监听
 ✅ WebSocket 连接成功!
 ```
 
@@ -126,7 +126,7 @@ npm run test:pages
 - [ ] **服务端口已开启**
   - 路径: 工具 → 设置 → 安全设置
   - 选项: ✅ 开启服务端口
-  - 端口: 21065
+  - 端口: 47748
 
 - [ ] **自动化功能已启用**
   - 路径: 工具 → 自动化
@@ -134,8 +134,8 @@ npm run test:pages
 
 - [ ] **端口已监听**
   ```bash
-  lsof -i :21065 | grep LISTEN
-  # 应该输出包含 21065 和 LISTEN 的行
+  lsof -i :47748 | grep LISTEN
+  # 应该输出包含 47748 和 LISTEN 的行
   ```
 
 - [ ] **WebSocket 连接成功**
@@ -302,7 +302,7 @@ node scripts/quick-test.js
 open ~/Library/Logs/
 
 # 3. 检查网络
-curl -i http://127.0.0.1:21065
+curl -i http://127.0.0.1:47748
 ```
 
 ### 快速修复
@@ -349,7 +349,7 @@ node scripts/quick-test.js
 
 **配置完成时间**: $(date '+%Y年%m月%d日 %H:%M:%S')
 **预计配置时间**: 5-10 分钟
-**自动化端口**: 21065
+**自动化端口**: 47748
 **微信 AppID**: wx003bb69f003c24b9
 
 ---

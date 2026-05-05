@@ -32,10 +32,10 @@ else
 fi
 
 # 检查端口
-if lsof -i :21065 | grep -q LISTEN; then
-    echo -e "${GREEN}   ✅ 端口 21065 已监听${NC}"
+if lsof -i :47748 | grep -q LISTEN; then
+    echo -e "${GREEN}   ✅ 端口 47748 已监听${NC}"
 else
-    echo -e "${RED}   ❌ 端口 21065 未监听${NC}"
+    echo -e "${RED}   ❌ 端口 47748 未监听${NC}"
     echo "   将在配置后自动检查"
 fi
 
@@ -76,7 +76,7 @@ echo -e "${YELLOW}   操作 1: 开启服务端口${NC}"
 echo "   1. 点击菜单: 工具 → 设置 (⌘+,)"
 echo "   2. 选择: 安全设置"
 echo "   3. ✅ 勾选: 开启服务端口"
-echo "   4. 确认端口号: 21065"
+echo "   4. 确认端口号: 47748"
 echo "   5. 点击: 确定"
 echo ""
 echo -e "${YELLOW}   操作 2: 开启自动化功能${NC}"
@@ -94,8 +94,8 @@ read -p "   完成以上操作后，按 Enter 继续验证..." -t 120
 
 # 检查端口
 echo ""
-echo "   检查端口 21065..."
-if lsof -i :21065 | grep -q LISTEN; then
+echo "   检查端口 47748..."
+if lsof -i :47748 | grep -q LISTEN; then
     echo -e "${GREEN}   ✅ 端口已监听${NC}"
     PORT_OK=1
 else
@@ -111,7 +111,7 @@ RESPONSE=$(curl -i -N \
   --header "Connection: Upgrade" \
   --header "Sec-WebSocket-Key: test" \
   --header "Sec-WebSocket-Version: 13" \
-  http://127.0.0.1:21065 \
+  http://127.0.0.1:47748 \
   2>&1 | head -3)
 
 if echo "$RESPONSE" | grep -q "101"; then

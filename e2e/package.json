@@ -5,6 +5,7 @@
   "scripts": {
     "test": "playwright test",
     "test:api": "playwright test tests/api.spec.ts",
+    "test:api:full": "playwright test tests/api-full.spec.ts",
     "test:login": "playwright test tests/login-full.spec.ts",
     "test:home": "playwright test tests/index-home.spec.ts",
     "test:profile": "playwright test tests/profile-full.spec.ts",

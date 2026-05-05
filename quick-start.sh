@@ -29,8 +29,8 @@ else
 fi
 
 # 检查 2: 端口是否监听
-echo -e "${YELLOW}2. 检查端口 21065...${NC}"
-if lsof -i :21065 | grep -q LISTEN; then
+echo -e "${YELLOW}2. 检查端口 47748...${NC}"
+if lsof -i :47748 | grep -q LISTEN; then
     echo -e "${GREEN}   ✅ 端口已监听${NC}"
 else
     echo -e "${RED}   ❌ 端口未监听${NC}"

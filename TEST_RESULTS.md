@@ -119,7 +119,7 @@ npm run test:pages
 状态: ❌ 无法连接微信开发者工具
 
 错误信息:
-Failed connecting to ws://127.0.0.1:21065, 
+Failed connecting to ws://127.0.0.1:47748, 
 check if target project window is opened with automation enabled
 
 可能原因:
@@ -204,7 +204,7 @@ await page.waitForTimeout(1000);
 ```
 
 ### 问题 2: 页面自动化连接失败
-**现象**: WebSocket 连接 ws://127.0.0.1:21065 失败
+**现象**: WebSocket 连接 ws://127.0.0.1:47748 失败
 **解决方案**:
 ```bash
 # 步骤 1: 确保开发者工具正在运行
@@ -217,7 +217,7 @@ ps aux | grep wechat
 open packages/miniapp/dist/dev/mp-weixin
 
 # 步骤 4: 确认端口监听
-lsof -i :21065
+lsof -i :47748
 ```
 
 ### 问题 3: 元素选择器不匹配
@@ -266,7 +266,7 @@ lsof -i :21065
 
 如遇测试问题，请检查:
 1. 后端服务是否运行: `curl http://localhost:3000`
-2. 微信开发者工具是否开启自动化端口: `lsof -i :21065`
+2. 微信开发者工具是否开启自动化端口: `lsof -i :47748`
 3. 项目是否正确构建: `ls packages/miniapp/dist/dev/mp-weixin`
 4. 依赖是否完整安装: `npm ls miniprogram-automator playwright`
 

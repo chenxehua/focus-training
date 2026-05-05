@@ -29,26 +29,26 @@ try {
     console.log('   ❌ No WeChat DevTools process found');
 }
 
-// 2. Check Port 21065 Status
+// 2. Check Port 47748 Status
 console.log('');
-console.log('📋 Step 2: Check Port 21065 Status');
+console.log('📋 Step 2: Check Port 9420 Status');
 console.log('─'.repeat(50));
 try {
-    const lsofOutput = execSync('lsof -i :21065 -sTCP:LISTEN', { encoding: 'utf8' });
-    console.log('   ✅ Port 21065 is LISTENING');
+    const lsofOutput = execSync('lsof -i :9420 -sTCP:LISTEN', { encoding: 'utf8' });
+    console.log('   ✅ Port 9420 is LISTENING');
     const lines = lsofOutput.trim().split('\n');
     lines.forEach((line, i) => {
         if (i > 0) console.log('   ' + line);
     });
 } catch (e) {
-    console.log('   ❌ Port 21065 is not listening');
+    console.log('   ❌ Port 9420 is not listening');
 }
 
 // 3. Test HTTP Connection
 console.log('');
-console.log('📋 Step 3: Test HTTP Connection');
+console.log('📋 Step 3: Test HTTP Connection to Port 9420');
 console.log('─'.repeat(50));
-http.get('http://127.0.0.1:21065/', (res) => {
+http.get('http://127.0.0.1:9420/', (res) => {
     console.log(`   HTTP Status: ${res.statusCode}`);
     if (res.statusCode === 404) {
         console.log('   ✅ Port is responding (404 is expected for automation)');
@@ -64,7 +64,7 @@ http.get('http://127.0.0.1:21065/', (res) => {
     console.log('─'.repeat(50));
     
     automator.connect({
-        ws: 'ws://127.0.0.1:21065'
+        ws: 'ws://127.0.0.1:9420'
     }).then(ui => {
         console.log('   ✅ Connected to mini program!');
         console.log('   Current page:', ui.page().path);

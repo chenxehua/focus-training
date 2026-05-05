@@ -30,11 +30,11 @@ pause() {
 }
 
 check_port() {
-    if lsof -i :21065 | grep -q LISTEN; then
-        echo -e "${GREEN}   ✅ 端口 21065 已监听${NC}"
+    if lsof -i :47748 | grep -q LISTEN; then
+        echo -e "${GREEN}   ✅ 端口 47748 已监听${NC}"
         return 0
     else
-        echo -e "${RED}   ❌ 端口 21065 未监听${NC}"
+        echo -e "${RED}   ❌ 端口 47748 未监听${NC}"
         return 1
     fi
 }
@@ -45,7 +45,7 @@ check_websocket() {
       --header "Connection: Upgrade" \
       --header "Sec-WebSocket-Key: test" \
       --header "Sec-WebSocket-Version: 13" \
-      http://127.0.0.1:21065 \
+      http://127.0.0.1:47748 \
       2>&1 | head -3)
     
     if echo "$RESPONSE" | grep -q "101"; then
@@ -140,7 +140,7 @@ echo ""
 echo -e "${CYAN}步骤 3.3: 开启服务端口${NC}"
 echo "   找到 '服务端口' 选项:"
 echo "   - ✅ 勾选 '开启服务端口'"
-echo "   - 确认端口号显示为: ${GREEN}21065${NC}"
+echo "   - 确认端口号显示为: ${GREEN}47748${NC}"
 echo ""
 pause
 
@@ -197,7 +197,7 @@ echo ""
 echo -e "${CYAN}步骤 4.3: 确认状态${NC}"
 echo "   应该显示:"
 echo "   - 状态: ${GREEN}已连接${NC} 或 ${GREEN}Connected${NC}"
-echo "   - 端口: ws://127.0.0.1:21065"
+echo "   - 端口: ws://127.0.0.1:47748"
 echo ""
 
 pause
