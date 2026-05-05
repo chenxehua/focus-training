@@ -11,7 +11,7 @@ const fs = require('fs');
 
 // 配置
 const config = {
-  wsEndpoint: process.env.WS_ENDPOINT || 'ws://127.0.0.1:21065',
+  wsEndpoint: process.env.WS_ENDPOINT || `ws://127.0.0.1:${process.env.WEIXIN_DEVTOOLS_PORT || 47748}`,
   screenshotDir: path.resolve(__dirname, '../test-results/screenshots'),
   reportDir: path.resolve(__dirname, '../test-results/reports'),
 };

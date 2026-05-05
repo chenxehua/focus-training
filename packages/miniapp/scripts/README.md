@@ -179,7 +179,7 @@ node scripts/test-games.js
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `WS_ENDPOINT` | `ws://127.0.0.1:21065` | 开发者工具 WebSocket 地址 |
+| `WS_ENDPOINT` | `ws://127.0.0.1:47748` | 开发者工具 WebSocket 地址 |
 | `API_BASE_URL` | `http://localhost:3000` | API 服务器地址 |
 
 ## 测试结果

@@ -13,14 +13,14 @@ const fs = require('fs');
 
 // 测试配置
 const config = {
-  wsEndpoint: process.env.WS_ENDPOINT || 'ws://127.0.0.1:21065',
+  wsEndpoint: process.env.WS_ENDPOINT || `ws://127.0.0.1:${process.env.WEIXIN_DEVTOOLS_PORT || 47748}`,
   timeout: 30000,
   screenshotDir: path.resolve(__dirname, '../test-results/screenshots'),
   reportDir: path.resolve(__dirname, '../test-results/reports'),
 };
 
 // 确保目录存在
-[screenshotDir, reportDir].forEach(dir => {
+[config.screenshotDir, config.reportDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }

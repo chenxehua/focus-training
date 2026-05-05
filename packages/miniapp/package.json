@@ -22,7 +22,19 @@
     "test:pages:tabbar": "node scripts/test-pages.js tabbar",
     "test:pages:nav": "node scripts/test-pages.js navigation",
     "test:pages:games": "node scripts/test-pages.js games",
-    "test:all": "playwright test && node scripts/test-automator.js"
+    "test:all": "playwright test && node scripts/test-automator.js",
+    "test:auto": "node scripts/auto-test-fix.js",
+    "test:auto:api": "node scripts/auto-test-fix.js --api",
+    "test:auto:ui": "node scripts/auto-test-fix.js --ui",
+    "test:auto:fix": "node scripts/auto-test-fix.js --fix",
+    "test:ui": "node scripts/ui-tester.js",
+    "test:verify": "node scripts/verify-pages.js",
+    "test:run": "node scripts/run-tests.js",
+    "test:run:api": "node scripts/run-tests.js --api",
+    "test:run:pages": "node scripts/run-tests.js --pages",
+    "test:run:ui": "node scripts/run-tests.js --ui",
+    "test:run:all": "node scripts/run-tests.js --all",
+    "test:run:fix": "node scripts/run-tests.js --fix"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-alpha-5000820260430001",

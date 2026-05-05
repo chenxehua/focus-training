@@ -6,7 +6,7 @@ const automator = require('miniprogram-automator');
 
 async function connect() {
   return automator.connect({
-    wsEndpoint: process.env.WS_ENDPOINT || 'ws://127.0.0.1:21065',
+    wsEndpoint: process.env.WS_ENDPOINT || 'ws://127.0.0.1:47748',
   });
 }
 

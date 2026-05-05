@@ -7,8 +7,8 @@ const WebSocket = require('ws');
 const http = require('http');
 
 // 配置
-const WS_ENDPOINT = 'ws://127.0.0.1:21065';
-const HTTP_ENDPOINT = 'http://127.0.0.1:21065';
+const WS_ENDPOINT = 'ws://127.0.0.1:47748';
+const HTTP_ENDPOINT = 'http://127.0.0.1:47748';
 
 // 颜色输出
 const colors = {
@@ -141,16 +141,16 @@ async function runDiagnostics() {
   }
   
   // 2. 检查端口
-  console.log('\n2️⃣ 检查自动化端口 (21065)...');
+  console.log('\n2️⃣ 检查自动化端口 (47748)...');
   
   try {
-    const portResult = execSync('lsof -i :21065 | grep LISTEN | wc -l', { encoding: 'utf8' });
+    const portResult = execSync('lsof -i :47748 | grep LISTEN | wc -l', { encoding: 'utf8' });
     const portCount = parseInt(portResult.trim());
     
     if (portCount > 0) {
-      success('端口 21065 正在监听');
+      success('端口 47748 正在监听');
     } else {
-      error('端口 21065 未监听');
+      error('端口 47748 未监听');
       console.log('请在开发者工具中: 设置 → 安全设置 → 开启服务端口');
     }
   } catch (e) {
