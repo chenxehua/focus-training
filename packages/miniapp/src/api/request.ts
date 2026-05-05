@@ -1,11 +1,13 @@
 import { getStorage } from '@/utils/storage'
 
-const BASE_URL = 'http://192.168.1.3:3000' // 开发环境地址
+// 开发环境地址 - 微信开发者工具和真机调试使用 localhost
+const BASE_URL = 'http://localhost:3000'
 
 const TOKEN_KEY = 'focus_token'
 
 export interface ApiResponse<T = unknown> {
-  code: number
+  code?: number
+  success?: boolean
   message: string
   data: T
 }
@@ -53,7 +55,8 @@ export function request<T = unknown>(options: {
         }
 
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          if (response.code === 0 || response.code === 200) {
+          // 支持 {code: 0} 或 {success: true} 两种响应格式
+          if (response.code === 0 || response.code === 200 || response.success === true) {
             resolve(response)
           } else {
             uni.showToast({ title: response.message || '请求失败', icon: 'none' })

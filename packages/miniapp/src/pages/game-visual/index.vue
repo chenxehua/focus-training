@@ -3,7 +3,6 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { useGameStore } from '@/store/game'
 import { submitGameRecord } from '@/api/game'
-import GameTimer from '@/components/GameTimer.vue'
 import StarRating from '@/components/StarRating.vue'
 
 type DifficultyLevel = 1 | 2 | 3 | 4 | 5
@@ -29,7 +28,9 @@ interface ChangeEvent {
 
 const userStore = useUserStore()
 const gameStore = useGameStore()
-const timerRef = ref<InstanceType<typeof GameTimer> | null>(null)
+
+// 本地计时器
+let gameTimer: ReturnType<typeof setInterval> | null = null
 
 // 游戏状态
 type GameStatus = 'idle' | 'ready' | 'playing' | 'finished'
@@ -60,6 +61,9 @@ const trackingLostTime = ref<number>(0)
 const resultScore = ref<number>(0)
 const resultFocusScore = ref<number>(0)
 const showResult = ref<boolean>(false)
+
+// 计时器
+const elapsedSeconds = ref<number>(0)
 
 // 动画帧
 let animationFrame: number | null = null
@@ -197,23 +201,35 @@ function initGame() {
   totalChanges.value = 0
   trackingLostTime.value = 0
   showResult.value = false
-  
+
   if (interferenceTimer) clearTimeout(interferenceTimer)
+}
+
+function stopGameTimer() {
+  if (gameTimer) {
+    clearInterval(gameTimer)
+    gameTimer = null
+  }
 }
 
 function startGame() {
   initGame()
   gameStatus.value = 'ready'
-  
+
   // 3秒准备时间
   setTimeout(() => {
     gameStatus.value = 'playing'
     trackingStartTime.value = Date.now()
-    timerRef.value?.start()
-    
+
+    // 启动本地计时器
+    elapsedSeconds.value = 0
+    gameTimer = setInterval(() => {
+      elapsedSeconds.value += 1
+    }, 1000)
+
     // 启动星星移动
     updateStarPositions()
-    
+
     // 启动干扰系统
     setTimeout(triggerInterference, 2000)
   }, 3000)
@@ -249,29 +265,29 @@ function calculateScore(): { score: number; focusScore: number } {
 }
 
 async function finishGame() {
-  timerRef.value?.stop()
-  
+  stopGameTimer()
+
   if (animationFrame) cancelAnimationFrame(animationFrame)
   if (interferenceTimer) clearTimeout(interferenceTimer)
-  
+
   gameStatus.value = 'finished'
-  
+
   const { score, focusScore } = calculateScore()
   resultScore.value = score
   resultFocusScore.value = focusScore
   showResult.value = true
-  
+
   if (userStore.currentChild) {
     try {
       const res = await submitGameRecord({
         childId: userStore.currentChild.id,
         gameId: 4, // G004 视觉追踪
-        durationSeconds: currentConfig.value.duration,
+        durationSeconds: Math.max(1, elapsedSeconds.value),
         accuracy: Math.round((reportedChanges.value / Math.max(1, totalChanges.value)) * 100),
         score,
         focusScore,
         difficultyLevel: difficulty.value,
-        gameConfig: { 
+        gameConfig: {
           starCount: currentConfig.value.starCount,
           targetCount: currentConfig.value.targetCount,
           speed: currentConfig.value.speed,
@@ -290,20 +306,15 @@ async function finishGame() {
   }
 }
 
-function onTimerTick(_seconds: number) {
-  // 时间到自动结束
-  finishGame()
-}
-
 function resetGame() {
   if (animationFrame) cancelAnimationFrame(animationFrame)
   if (interferenceTimer) clearTimeout(interferenceTimer)
-  timerRef.value?.stop()
-  timerRef.value?.reset()
-  
+  stopGameTimer()
+
   gameStatus.value = 'idle'
   showResult.value = false
   stars.value = []
+  elapsedSeconds.value = 0
 }
 
 function getStarStyle(star: Star): Record<string, string> {
@@ -328,7 +339,7 @@ function getStarStyle(star: Star): Record<string, string> {
 onUnmounted(() => {
   if (animationFrame) cancelAnimationFrame(animationFrame)
   if (interferenceTimer) clearTimeout(interferenceTimer)
-  timerRef.value?.stop()
+  stopGameTimer()
 })
 </script>
 
@@ -397,12 +408,9 @@ onUnmounted(() => {
           <text class="status-label">已报告</text>
           <text class="status-value">{{ reportedChanges }}</text>
         </view>
-        <GameTimer
-          ref="timerRef"
-          :auto-start="false"
-          :time-limit="currentConfig.duration"
-          @tick="onTimerTick"
-        />
+        <view class="timer-display">
+          <text class="timer-text">{{ String(Math.floor(elapsedSeconds / 60)).padStart(2, '0') }}:{{ String(elapsedSeconds % 60).padStart(2, '0') }}</text>
+        </view>
         <view class="status-item">
           <text class="status-label">目标</text>
           <text class="status-value">{{ currentConfig.targetCount }}</text>
@@ -716,6 +724,20 @@ onUnmounted(() => {
   color: #6C63FF;
 }
 
+.timer-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timer-text {
+  font-size: 64rpx;
+  font-weight: 700;
+  color: #6C63FF;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 4rpx;
+}
+
 .star-field {
   width: 710rpx;
   height: 500rpx;
@@ -894,6 +916,7 @@ onUnmounted(() => {
 }
 
 .result-actions {
+  box-sizing: border-box;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -901,6 +924,7 @@ onUnmounted(() => {
 }
 
 .result-btn {
+  box-sizing: border-box;
   width: 100%;
 }
 </style>

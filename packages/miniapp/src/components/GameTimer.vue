@@ -3,7 +3,7 @@ import { ref, computed, onUnmounted } from 'vue'
 
 interface Props {
   autoStart?: boolean
-  countDown?: number  // 倒计时秒数，0 表示正计时
+  countDown?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -16,12 +16,12 @@ const emit = defineEmits<{
   (e: 'finish'): void
 }>()
 
-const seconds = ref<number>(props.countDown > 0 ? props.countDown : 0)
-const isRunning = ref<boolean>(false)
+const internalSeconds = ref(0)
+const isRunning = ref(false)
 let timer: ReturnType<typeof setInterval> | null = null
 
 const displayTime = computed(() => {
-  const total = seconds.value
+  const total = internalSeconds.value
   const m = Math.floor(total / 60)
   const s = total % 60
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
@@ -35,16 +35,16 @@ function start() {
 
   timer = setInterval(() => {
     if (isCountDown.value) {
-      seconds.value -= 1
-      emit('tick', seconds.value)
-      if (seconds.value <= 0) {
-        seconds.value = 0
+      internalSeconds.value -= 1
+      emit('tick', internalSeconds.value)
+      if (internalSeconds.value <= 0) {
+        internalSeconds.value = 0
         stop()
         emit('finish')
       }
     } else {
-      seconds.value += 1
-      emit('tick', seconds.value)
+      internalSeconds.value += 1
+      emit('tick', internalSeconds.value)
     }
   }, 1000)
 }
@@ -59,11 +59,11 @@ function stop() {
 
 function reset() {
   stop()
-  seconds.value = props.countDown > 0 ? props.countDown : 0
+  internalSeconds.value = props.countDown > 0 ? props.countDown : 0
 }
 
 function getElapsed(): number {
-  return isCountDown.value ? props.countDown - seconds.value : seconds.value
+  return internalSeconds.value
 }
 
 if (props.autoStart) {
@@ -74,16 +74,16 @@ onUnmounted(() => {
   stop()
 })
 
-defineExpose({ start, stop, reset, getElapsed, seconds })
+defineExpose({ start, stop, reset, getElapsed })
 </script>
 
 <template>
-  <view class="game-timer" :class="{ 'count-down': isCountDown && seconds <= 10 }">
+  <view class="game-timer" :class="{ 'count-down': isCountDown && internalSeconds <= 10 }">
     <text class="timer-text">{{ displayTime }}</text>
     <view v-if="isCountDown" class="progress-bar">
       <view
         class="progress-fill"
-        :style="{ width: `${(seconds / countDown) * 100}%` }"
+        :style="{ width: `${(internalSeconds / countDown) * 100}%` }"
       />
     </view>
   </view>

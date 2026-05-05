@@ -3,7 +3,6 @@ import { ref, computed, onUnmounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { useGameStore } from '@/store/game'
 import { submitGameRecord } from '@/api/game'
-import GameTimer from '@/components/GameTimer.vue'
 import StarRating from '@/components/StarRating.vue'
 
 type DifficultyLevel = 1 | 2 | 3
@@ -18,12 +17,14 @@ interface PatternItem {
 const userStore = useUserStore()
 const gameStore = useGameStore()
 
-const timerRef = ref<InstanceType<typeof GameTimer> | null>(null)
-
 // 游戏状态
 type GameStatus = 'idle' | 'memorizing' | 'playing' | 'finished'
 const gameStatus = ref<GameStatus>('idle')
 const difficulty = ref<DifficultyLevel>(1)
+const elapsedSeconds = ref(0)
+
+// 本地计时器
+let gameTimer: ReturnType<typeof setInterval> | null = null
 
 // 图案配置
 const difficultyConfig: Record<DifficultyLevel, { count: number; showTime: number; label: string }> = {
@@ -88,38 +89,46 @@ function initGame() {
 function startGame() {
   initGame()
   gameStatus.value = 'memorizing'
-  
+  elapsedSeconds.value = 0
+
+  // 启动本地计时器
+  gameTimer = setInterval(() => {
+    elapsedSeconds.value += 1
+  }, 1000)
+
   // 显示一段时间后隐藏
   if (memorizeTimer) clearTimeout(memorizeTimer)
   memorizeTimer = setTimeout(() => {
     patterns.value = patterns.value.map(p => ({ ...p, visible: false }))
     gameStatus.value = 'playing'
-    timerRef.value?.start()
   }, currentConfig.value.showTime)
+}
+
+function stopGameTimer() {
+  if (gameTimer) {
+    clearInterval(gameTimer)
+    gameTimer = null
+  }
 }
 
 function handlePatternTap(id: number) {
   if (gameStatus.value !== 'playing') return
   if (selectedIds.value.includes(id)) return
-  
+
   selectedIds.value.push(id)
   showCount.value++
-  
+
   const originalPattern = patterns.value.find(p => p.id === id)
   if (originalPattern) {
     correctCount.value++
-    patterns.value = patterns.value.map(p => 
+    patterns.value = patterns.value.map(p =>
       p.id === id ? { ...p, visible: true } : p
     )
-    
+
     if (selectedIds.value.length === currentConfig.value.count) {
       finishGame()
     }
   }
-}
-
-function onTimerTick(_seconds: number) {
-  // 图案记忆不计时，只是辅助
 }
 
 function calculateScore(correct: number, total: number): { score: number; focusScore: number } {
@@ -127,25 +136,25 @@ function calculateScore(correct: number, total: number): { score: number; focusS
   const baseScore = total * 20
   const score = Math.round(baseScore + accuracy * 0.5)
   const focusScore = Math.round(accuracy)
-  
+
   return { score, focusScore }
 }
 
 async function finishGame() {
-  timerRef.value?.stop()
+  stopGameTimer()
   gameStatus.value = 'finished'
-  
+
   const { score, focusScore } = calculateScore(correctCount.value, currentConfig.value.count)
   resultScore.value = score
   resultFocusScore.value = focusScore
   showResult.value = true
-  
+
   if (userStore.currentChild) {
     try {
       const res = await submitGameRecord({
         childId: userStore.currentChild.id,
         gameId: 4, // G004 图形记忆
-        durationSeconds: Math.round(currentConfig.value.showTime / 1000) + 30,
+        durationSeconds: Math.max(1, elapsedSeconds.value),
         accuracy: Math.round((correctCount.value / currentConfig.value.count) * 100),
         score,
         focusScore,
@@ -161,12 +170,13 @@ async function finishGame() {
 }
 
 function resetGame() {
-  timerRef.value?.stop()
+  stopGameTimer()
   if (memorizeTimer) clearTimeout(memorizeTimer)
   gameStatus.value = 'idle'
   showResult.value = false
   patterns.value = []
   selectedIds.value = []
+  elapsedSeconds.value = 0
 }
 
 function formatTime(seconds: number): string {
@@ -177,7 +187,7 @@ function formatTime(seconds: number): string {
 }
 
 onUnmounted(() => {
-  timerRef.value?.stop()
+  stopGameTimer()
   if (memorizeTimer) clearTimeout(memorizeTimer)
 })
 </script>
@@ -663,6 +673,7 @@ onUnmounted(() => {
 }
 
 .result-actions {
+  box-sizing: border-box;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -670,6 +681,7 @@ onUnmounted(() => {
 }
 
 .result-btn {
+  box-sizing: border-box;
   width: 100%;
 }
 </style>

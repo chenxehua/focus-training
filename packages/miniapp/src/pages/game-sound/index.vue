@@ -1040,6 +1040,7 @@ onUnmounted(() => {
 }
 
 .result-actions {
+  box-sizing: border-box;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -1047,6 +1048,7 @@ onUnmounted(() => {
 }
 
 .result-btn {
+  box-sizing: border-box;
   width: 100%;
 }
 </style>

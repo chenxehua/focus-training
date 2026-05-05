@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { GameInfo } from '@/store/game'
 
 interface Props {
@@ -39,7 +40,20 @@ const typeColorMap: Record<string, string> = {
   听觉: '#4DB6AC',
 }
 
+const gameEmojiMap: Record<string, string> = {
+  schulte: '🔢',
+  audio_count: '👂',
+  pattern_memory: '🎨',
+  visual_tracking: '👁️',
+  rhythm_tap: '🎵',
+  auditory_memory: '🕵️',
+  maze_navigation: '🐻',
+  quick_sort: '📦',
+  target_tracking: '⭐',
+}
+
 const tagColor = typeColorMap[props.game.gameType] || '#6C63FF'
+const gameEmoji = computed(() => gameEmojiMap[props.game.gameCode] || '🎮')
 </script>
 
 <template>
@@ -49,11 +63,7 @@ const tagColor = typeColorMap[props.game.gameType] || '#6C63FF'
     </view>
 
     <view class="card-header">
-      <image
-        class="game-icon"
-        :src="game.iconUrl || '/static/game-default.png'"
-        mode="aspectFill"
-      />
+      <text class="game-icon">{{ gameEmoji }}</text>
       <view class="game-meta">
         <view class="type-tag" :style="{ backgroundColor: tagColor }">
           {{ game.gameType }}
@@ -124,11 +134,15 @@ const tagColor = typeColorMap[props.game.gameType] || '#6C63FF'
 }
 
 .game-icon {
+  font-size: 56rpx;
   width: 80rpx;
   height: 80rpx;
   border-radius: 16rpx;
   margin-right: 16rpx;
-  background-color: #f0f0f0;
+  background-color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .game-meta {

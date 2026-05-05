@@ -17,10 +17,18 @@ export class MembershipController {
     try {
       const userId = req.userId
 
+      // 未登录返回 is_vip: false，不是错误
       if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: '未登录'
+        return res.json({
+          success: true,
+          data: {
+            is_vip: false,
+            member_type: null,
+            member_level: null,
+            start_date: null,
+            end_date: null,
+            days_remaining: 0
+          }
         })
       }
 
@@ -49,8 +57,8 @@ export class MembershipController {
         success: true,
         data: {
           is_vip: isVip,
-          member_type: membership.member_type,
-          member_level: membership.member_level,
+          member_type: membership.tier,
+          member_level: membership.name,
           start_date: membership.start_date,
           end_date: membership.end_date,
           days_remaining: daysRemaining
@@ -165,8 +173,8 @@ export class MembershipController {
         success: true,
         data: membership ? {
           id: membership.id,
-          memberType: membership.member_type,
-          memberLevel: membership.member_level,
+          memberType: membership.tier,
+          memberName: membership.name,
           startDate: membership.start_date,
           endDate: membership.end_date,
           status: membership.status === 1 ? 'active' : 'expired',

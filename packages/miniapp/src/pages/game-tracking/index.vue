@@ -3,7 +3,6 @@ import { ref, computed, onUnmounted, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { useGameStore } from '@/store/game'
 import { submitGameRecord } from '@/api/game'
-import GameTimer from '@/components/GameTimer.vue'
 import StarRating from '@/components/StarRating.vue'
 
 type DifficultyLevel = 1 | 2 | 3 | 4 | 5
@@ -41,7 +40,9 @@ interface Animal {
 
 const userStore = useUserStore()
 const gameStore = useGameStore()
-const timerRef = ref<InstanceType<typeof GameTimer> | null>(null)
+
+// 本地计时器
+let gameTimer: ReturnType<typeof setInterval> | null = null
 
 // 音频上下文
 let audioContext: AudioContext | null = null
@@ -195,7 +196,7 @@ function updateStarPositions() {
     }
   })
   
-  animationFrame = requestAnimationFrame(updateStarPositions)
+  animationFrame = wx.requestAnimationFrame ? wx.requestAnimationFrame(updateStarPositions) : null
 }
 
 function triggerInterference() {
@@ -349,23 +350,33 @@ function initGame() {
   if (hideTimer) clearTimeout(hideTimer)
 }
 
+function stopGameTimer() {
+  if (gameTimer) {
+    clearInterval(gameTimer)
+    gameTimer = null
+  }
+}
+
 function startGame() {
   initGame()
   gameStatus.value = 'ready'
-  
+
   setTimeout(() => {
     gameStatus.value = 'instruction'
     // 显示目标指示
     setTimeout(() => {
       gameStatus.value = 'playing'
       trackingStartTime.value = Date.now()
-      
+
+      // 启动本地计时器
+      elapsedSeconds.value = 0
+      gameTimer = setInterval(() => {
+        elapsedSeconds.value += 1
+      }, 1000)
+
       if (gameMode.value === 'tracking') {
-        timerRef.value?.start()
         updateStarPositions()
         setTimeout(triggerInterference, 2000)
-      } else {
-        timerRef.value?.start()
       }
     }, 2000)
   }, 1000)
@@ -460,36 +471,26 @@ function calculateScore(): { score: number; focusScore: number } {
 
 const elapsedSeconds = ref(0)
 
-function onTimerTick(seconds: number) {
-  elapsedSeconds.value = seconds
-  if (gameMode.value === 'finding') {
-    const config = currentAnimalConfig.value
-    if (seconds >= config.duration) {
-      finishGame()
-    }
-  }
-}
-
 async function finishGame() {
-  timerRef.value?.stop()
-  
-  if (animationFrame) cancelAnimationFrame(animationFrame)
+  stopGameTimer()
+
+  if (animationFrame) wx.cancelAnimationFrame(animationFrame)
   if (interferenceTimer) clearTimeout(interferenceTimer)
   if (hideTimer) clearTimeout(hideTimer)
-  
+
   gameStatus.value = 'finished'
-  
+
   const { score, focusScore } = calculateScore()
   resultScore.value = score
   resultFocusScore.value = focusScore
   showResult.value = true
-  
+
   if (userStore.currentChild) {
     try {
       await submitGameRecord({
         childId: userStore.currentChild.id,
         gameId: 9, // G009 追踪目标
-        durationSeconds: elapsedSeconds.value,
+        durationSeconds: Math.max(1, elapsedSeconds.value),
         accuracy: gameMode.value === 'tracking'
           ? Math.round((reportedChanges.value / Math.max(1, totalChanges.value)) * 100)
           : Math.round((foundTargets.value.length / currentAnimalConfig.value.targetCount) * 100),
@@ -524,12 +525,11 @@ async function finishGame() {
 }
 
 function resetGame() {
-  if (animationFrame) cancelAnimationFrame(animationFrame)
+  if (animationFrame) wx.cancelAnimationFrame(animationFrame)
   if (interferenceTimer) clearTimeout(interferenceTimer)
   if (hideTimer) clearTimeout(hideTimer)
-  timerRef.value?.stop()
-  timerRef.value?.reset()
-  
+  stopGameTimer()
+
   gameStatus.value = 'idle'
   showResult.value = false
   stars.value = []
@@ -574,10 +574,10 @@ function getAnimalStyle(animal: Animal): Record<string, string> {
 }
 
 onUnmounted(() => {
-  if (animationFrame) cancelAnimationFrame(animationFrame)
+  if (animationFrame) wx.cancelAnimationFrame(animationFrame)
   if (interferenceTimer) clearTimeout(interferenceTimer)
   if (hideTimer) clearTimeout(hideTimer)
-  timerRef.value?.stop()
+  stopGameTimer()
   if (audioContext) audioContext.close()
 })
 </script>
@@ -701,14 +701,11 @@ onUnmounted(() => {
           <text class="status-label">已找到</text>
           <text class="status-value">{{ foundTargets.length }}/{{ currentAnimalConfig.targetCount }}</text>
         </view>
-        
-        <GameTimer
-          ref="timerRef"
-          :auto-start="false"
-          :time-limit="gameMode === 'tracking' ? currentConfig.duration : currentAnimalConfig.duration"
-          @tick="onTimerTick"
-        />
-        
+
+        <view class="timer-display">
+          <text class="timer-text">{{ String(Math.floor(elapsedSeconds / 60)).padStart(2, '0') }}:{{ String(elapsedSeconds % 60).padStart(2, '0') }}</text>
+        </view>
+
         <view v-if="gameMode === 'tracking'" class="status-item">
           <text class="status-label">干扰</text>
           <text class="status-value">{{ totalChanges }}</text>
@@ -1098,8 +1095,22 @@ onUnmounted(() => {
   font-size: 36rpx;
   font-weight: 700;
   color: #6C63FF;
-  
+
   &.wrong { color: #FF5252; }
+}
+
+.timer-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timer-text {
+  font-size: 64rpx;
+  font-weight: 700;
+  color: #6C63FF;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 4rpx;
 }
 
 .game-field {
@@ -1321,11 +1332,13 @@ onUnmounted(() => {
 }
 
 .result-actions {
+  box-sizing: border-box;
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 12rpx;
 }
 
-.result-btn { width: 100%; }
+.result-btn {
+  box-sizing: border-box; width: 100%; }
 </style>

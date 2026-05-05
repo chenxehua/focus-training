@@ -26,7 +26,7 @@ export class TrainingRecordModel {
         data.childId,
         data.gameId,
         data.durationSeconds,
-        data.accuracy,
+        Math.min(0.9999, Math.max(0, (data.accuracy || 0) / 100)), // 将百分比转为小数并限制范围
         data.score,
         data.focusScore,
         data.difficultyLevel,

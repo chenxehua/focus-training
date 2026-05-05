@@ -3,7 +3,6 @@ import { ref, computed, onUnmounted, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { useGameStore } from '@/store/game'
 import { submitGameRecord } from '@/api/game'
-import GameTimer from '@/components/GameTimer.vue'
 import StarRating from '@/components/StarRating.vue'
 
 type DifficultyLevel = 1 | 2 | 3 | 4 | 5
@@ -26,7 +25,8 @@ interface Question {
 const userStore = useUserStore()
 const gameStore = useGameStore()
 
-const timerRef = ref<InstanceType<typeof GameTimer> | null>(null)
+// 本地计时器
+let gameTimer: ReturnType<typeof setInterval> | null = null
 
 // 游戏配置
 const difficulty = ref<DifficultyLevel>(1)
@@ -197,8 +197,20 @@ function startGame() {
   elapsedSeconds.value = 0
   showResult.value = false
   gamePhase.value = 'playing'
-  
+
+  // 启动本地计时器
+  gameTimer = setInterval(() => {
+    elapsedSeconds.value += 1
+  }, 1000)
+
   startQuestion()
+}
+
+function stopGameTimer() {
+  if (gameTimer) {
+    clearInterval(gameTimer)
+    gameTimer = null
+  }
 }
 
 async function startQuestion() {
@@ -261,16 +273,12 @@ function selectAnswer(value: number) {
 
 function nextQuestion() {
   currentQuestionIndex.value++
-  
+
   if (currentQuestionIndex.value >= questions.value.length) {
     finishGame()
   } else {
     startQuestion()
   }
-}
-
-function onTimerTick(seconds: number) {
-  elapsedSeconds.value = seconds
 }
 
 function calculateScore(): { score: number; stars: number } {
@@ -316,24 +324,24 @@ function calculateScore(): { score: number; stars: number } {
 }
 
 async function finishGame() {
-  timerRef.value?.stop()
+  stopGameTimer()
   gamePhase.value = 'finished'
-  
+
   const { score, stars } = calculateScore()
   resultScore.value = score
   resultStars.value = stars
   showResult.value = true
-  
+
   // 提交记录
   if (userStore.currentChild) {
     try {
       const totalResponseTime = questions.value.reduce((sum, q) => sum + q.responseTime, 0)
       const avgResponseTime = totalResponseTime / questions.value.length
-      
+
       await submitGameRecord({
         childId: userStore.currentChild.id,
         gameId: 2, // G002 听声辨数
-        durationSeconds: elapsedSeconds.value,
+        durationSeconds: Math.max(1, elapsedSeconds.value),
         accuracy: Math.round((correctCount.value / questions.value.length) * 100),
         score: resultScore.value,
         focusScore: resultScore.value,
@@ -359,8 +367,7 @@ async function finishGame() {
 }
 
 function resetGame() {
-  timerRef.value?.stop()
-  timerRef.value?.reset()
+  stopGameTimer()
   gamePhase.value = 'start'
   questions.value = []
   currentQuestionIndex.value = 0
@@ -389,7 +396,7 @@ function getButtonLabel(count: number): string {
 }
 
 onUnmounted(() => {
-  timerRef.value?.stop()
+  stopGameTimer()
   if (audioContext) {
     audioContext.close()
   }
@@ -443,11 +450,9 @@ onUnmounted(() => {
           <text class="status-label">题目</text>
           <text class="status-value">{{ currentQuestionIndex + 1 }}/{{ questions.length }}</text>
         </view>
-        <GameTimer
-          ref="timerRef"
-          :auto-start="false"
-          @tick="onTimerTick"
-        />
+        <view class="timer-display">
+          <text class="timer-text">{{ String(Math.floor(elapsedSeconds / 60)).padStart(2, '0') }}:{{ String(elapsedSeconds % 60).padStart(2, '0') }}</text>
+        </view>
         <view class="status-item">
           <text class="status-label">正确</text>
           <text class="status-value correct">{{ correctCount }}</text>
@@ -724,8 +729,22 @@ onUnmounted(() => {
   font-size: 36rpx;
   font-weight: 700;
   color: #6C63FF;
-  
+
   &.correct { color: #6BCB77; }
+}
+
+.timer-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timer-text {
+  font-size: 64rpx;
+  font-weight: 700;
+  color: #6C63FF;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 4rpx;
 }
 
 .game-content {
@@ -960,6 +979,7 @@ onUnmounted(() => {
 }
 
 .result-actions {
+  box-sizing: border-box;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -967,6 +987,7 @@ onUnmounted(() => {
 }
 
 .result-btn {
+  box-sizing: border-box;
   width: 100%;
 }
 </style>

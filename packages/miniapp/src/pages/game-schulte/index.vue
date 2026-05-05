@@ -3,7 +3,6 @@ import { ref, computed, onUnmounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { useGameStore } from '@/store/game'
 import { submitGameRecord } from '@/api/game'
-import GameTimer from '@/components/GameTimer.vue'
 import StarRating from '@/components/StarRating.vue'
 
 type DifficultyLevel = 1 | 2 | 3
@@ -16,8 +15,6 @@ interface Cell {
 const userStore = useUserStore()
 const gameStore = useGameStore()
 
-const timerRef = ref<InstanceType<typeof GameTimer> | null>(null)
-
 // 游戏状态
 type GameStatus = 'idle' | 'playing' | 'finished'
 const gameStatus = ref<GameStatus>('idle')
@@ -25,8 +22,10 @@ const difficulty = ref<DifficultyLevel>(1)
 const cells = ref<Cell[]>([])
 const nextTarget = ref<number>(1)
 const errorCount = ref<number>(0)
-const startTime = ref<number>(0)
 const elapsedSeconds = ref<number>(0)
+
+// 本地计时器
+let gameTimer: ReturnType<typeof setInterval> | null = null
 
 // 难度配置
 const difficultyConfig: Record<DifficultyLevel, { size: number; label: string; timeLimit: number }> = {
@@ -76,9 +75,19 @@ function initGame() {
 function startGame() {
   initGame()
   gameStatus.value = 'playing'
-  startTime.value = Date.now()
-  timerRef.value?.reset()
-  timerRef.value?.start()
+  elapsedSeconds.value = 0
+
+  // 启动本地计时器
+  gameTimer = setInterval(() => {
+    elapsedSeconds.value += 1
+  }, 1000)
+}
+
+function stopGameTimer() {
+  if (gameTimer) {
+    clearInterval(gameTimer)
+    gameTimer = null
+  }
 }
 
 function handleCellTap(index: number) {
@@ -109,10 +118,6 @@ function handleCellTap(index: number) {
   }
 }
 
-function onTimerTick(seconds: number) {
-  elapsedSeconds.value = seconds
-}
-
 function calculateScore(elapsed: number, errors: number, total: number): { score: number; focusScore: number } {
   const timeLimit = currentConfig.value.timeLimit
   const baseScore = total * 10
@@ -129,9 +134,9 @@ function calculateScore(elapsed: number, errors: number, total: number): { score
 }
 
 async function finishGame() {
-  timerRef.value?.stop()
-  const elapsed = timerRef.value?.getElapsed() ?? elapsedSeconds.value
-  elapsedSeconds.value = elapsed
+  // 先停止计时器，确保计时停止
+  stopGameTimer()
+  const elapsed = elapsedSeconds.value
   gameStatus.value = 'finished'
 
   const { score, focusScore } = calculateScore(elapsed, errorCount.value, totalCells.value)
@@ -142,11 +147,14 @@ async function finishGame() {
   // 提交记录
   if (userStore.currentChild) {
     try {
+      const accuracyValue = totalCells.value > 0
+        ? Math.round(((totalCells.value - errorCount.value) / totalCells.value) * 100)
+        : 100
       const res = await submitGameRecord({
         childId: userStore.currentChild.id,
         gameId: 1, // G001 舒尔特方格
-        durationSeconds: elapsed,
-        accuracy: Math.round(((totalCells.value - errorCount.value) / totalCells.value) * 100),
+        durationSeconds: Math.max(1, elapsed),
+        accuracy: Math.max(0, Math.min(100, accuracyValue)),
         score,
         focusScore,
         difficultyLevel: difficulty.value,
@@ -165,8 +173,7 @@ async function finishGame() {
 }
 
 function resetGame() {
-  timerRef.value?.stop()
-  timerRef.value?.reset()
+  stopGameTimer()
   gameStatus.value = 'idle'
   showResult.value = false
   cells.value = []
@@ -183,7 +190,7 @@ function formatTime(seconds: number): string {
 }
 
 onUnmounted(() => {
-  timerRef.value?.stop()
+  stopGameTimer()
   if (errorTimer) clearTimeout(errorTimer)
 })
 </script>
@@ -231,11 +238,9 @@ onUnmounted(() => {
           <text class="status-label">目标</text>
           <text class="status-value target">{{ nextTarget }}</text>
         </view>
-        <GameTimer
-          ref="timerRef"
-          :auto-start="false"
-          @tick="onTimerTick"
-        />
+        <view class="timer-display">
+          <text class="timer-text">{{ String(Math.floor(elapsedSeconds / 60)).padStart(2, '0') }}:{{ String(elapsedSeconds % 60).padStart(2, '0') }}</text>
+        </view>
         <view class="status-item">
           <text class="status-label">错误</text>
           <text class="status-value error-count" :class="{ warn: errorCount > 0 }">{{ errorCount }}</text>
@@ -484,6 +489,20 @@ onUnmounted(() => {
   &.warn { color: #FF8A80; }
 }
 
+.timer-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timer-text {
+  font-size: 64rpx;
+  font-weight: 700;
+  color: #6C63FF;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 4rpx;
+}
+
 .grid-container {
   background-color: #ffffff;
   border-radius: 24rpx;
@@ -646,9 +665,11 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
+  box-sizing: border-box;
 }
 
 .result-btn {
   width: 100%;
+  box-sizing: border-box;
 }
 </style>

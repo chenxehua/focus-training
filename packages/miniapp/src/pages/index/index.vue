@@ -29,8 +29,21 @@ function formatDuration(seconds: number): string {
 }
 
 function navigateToGame(game: GameInfo) {
-  if (game.gameCode === 'G001') {
-    uni.navigateTo({ url: '/pages/game-schulte/index' })
+  const gamePageMap: Record<string, string> = {
+    'schulte': '/pages/game-schulte/index',
+    'audio_count': '/pages/game-audio/index',
+    'pattern_memory': '/pages/game-memory/index',
+    'visual_tracking': '/pages/game-visual/index',
+    'reaction_speed': '/pages/game-reaction/index',
+    'rhythm_tap': '/pages/game-rhythm/index',
+    'auditory_memory': '/pages/game-sound/index',
+    'maze_navigation': '/pages/game-maze/index',
+    'quick_sort': '/pages/game-sort/index',
+    'target_tracking': '/pages/game-tracking/index'
+  }
+  const url = gamePageMap[game.gameCode]
+  if (url) {
+    uni.navigateTo({ url })
   } else {
     uni.showToast({ title: '该游戏即将上线', icon: 'none' })
   }
