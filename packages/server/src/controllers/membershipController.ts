@@ -103,6 +103,86 @@ export class MembershipController {
   }
 
   /**
+   * 获取会员权益说明
+   */
+  static async getMembershipBenefits(req: Request, res: Response) {
+    try {
+      const tiers = [
+        {
+          type: 'free',
+          name: '免费版',
+          price: 0,
+          period: '永久',
+          features: ['3款基础游戏', '每日训练统计']
+        },
+        {
+          type: 'vip',
+          name: '年度VIP',
+          price: 199,
+          originalPrice: 299,
+          period: '1年',
+          features: [
+            '畅玩全部9款训练游戏',
+            '7维度专业评估报告',
+            '个性化训练计划',
+            '成就徽章系统',
+            'AI智能推荐',
+            '优先客服支持'
+          ]
+        }
+      ]
+
+      res.json({
+        success: true,
+        data: { tiers }
+      })
+    } catch (error) {
+      console.error('获取会员权益失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '获取会员权益失败'
+      })
+    }
+  }
+
+  /**
+   * 获取会员信息
+   */
+  static async getMembershipInfo(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.userId
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: '未登录'
+        })
+      }
+
+      const membership = await MembershipModel.findByUserId(userId)
+
+      res.json({
+        success: true,
+        data: membership ? {
+          id: membership.id,
+          memberType: membership.member_type,
+          memberLevel: membership.member_level,
+          startDate: membership.start_date,
+          endDate: membership.end_date,
+          status: membership.status === 1 ? 'active' : 'expired',
+          isVip: membership.end_date && new Date(membership.end_date) > new Date()
+        } : null
+      })
+    } catch (error) {
+      console.error('获取会员信息失败:', error)
+      res.status(500).json({
+        success: false,
+        message: '获取会员信息失败'
+      })
+    }
+  }
+
+  /**
    * 获取购买历史
    */
   static async getPurchaseHistory(req: AuthRequest, res: Response) {

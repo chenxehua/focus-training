@@ -210,6 +210,16 @@ export class OrderModel {
   }
 
   /**
+   * 获取用户已支付订单列表
+   */
+  static async findPaidByUserId(userId: number, limit = 50): Promise<OrderData[]> {
+    return query(
+      `SELECT * FROM \`order\` WHERE user_id = ? AND pay_status = 1 ORDER BY created_at DESC LIMIT ?`,
+      [userId, limit]
+    )
+  }
+
+  /**
    * 获取订单详情
    */
   static async findByOrderNo(orderNo: string): Promise<OrderData | null> {

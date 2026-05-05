@@ -21,10 +21,22 @@ const router = Router()
 router.get('/status', authMiddleware, MembershipController.getMembershipStatus)
 
 /**
+ * GET /api/membership/info
+ * 获取会员信息（需登录）
+ */
+router.get('/info', authMiddleware, MembershipController.getMembershipInfo)
+
+/**
  * GET /api/membership/packages
  * 获取会员套餐列表（无需登录）
  */
 router.get('/packages', MembershipController.getMembershipPackages)
+
+/**
+ * GET /api/membership/benefits
+ * 获取会员权益说明（无需登录）
+ */
+router.get('/benefits', MembershipController.getMembershipBenefits)
 
 /**
  * POST /api/membership/create-order
