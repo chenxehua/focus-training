@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { ApiResponse, PageResult, DashboardStats, User, Child, Order, Member, Article, Question, Game, TrainingTrend, GameStats } from '@/types'
+import type { ApiResponse, PageResult, DashboardStats, User, Child, Order, Member, Article, Question, Game, TrainingTrend, GameStats, TrainingRecord, TodayTraining, AssessmentReport } from '@/types'
 
 // 仪表盘统计
 export function getDashboardStats() {
@@ -150,4 +150,42 @@ export function getRetentionAnalytics() {
     d7_retained: number
     d30_retained: number
   }[]>>('/admin/analytics/retention')
+}
+
+// 训练记录管理
+export function getTrainingRecords(params: {
+  page?: number
+  pageSize?: number
+  childId?: number
+  gameId?: number
+  startDate?: string
+  endDate?: string
+}) {
+  return request.get<ApiResponse<PageResult<TrainingRecord>>>('/admin/training/records', { params })
+}
+
+export function getChildTrainingRecords(childId: number, params?: { page?: number; pageSize?: number }) {
+  return request.get<ApiResponse<PageResult<TrainingRecord>>>(`/admin/training/child/${childId}`, { params })
+}
+
+export function getTrainingRecordDetail(id: number) {
+  return request.get<ApiResponse<TrainingRecord>>(`/admin/training/records/${id}`)
+}
+
+// 今日训练数据
+export function getTodayTraining() {
+  return request.get<ApiResponse<TodayTraining>>('/admin/training/today')
+}
+
+// 评估报告
+export function getChildAssessmentReport(childId: number) {
+  return request.get<ApiResponse<AssessmentReport>>(`/admin/assessment/child/${childId}`)
+}
+
+export function getAssessmentReportList(params?: {
+  page?: number
+  pageSize?: number
+  childId?: number
+}) {
+  return request.get<ApiResponse<PageResult<AssessmentReport>>>('/admin/assessment/list', { params })
 }

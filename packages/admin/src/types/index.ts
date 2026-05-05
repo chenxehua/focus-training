@@ -137,3 +137,62 @@ export interface GameStats {
   avg_accuracy: number
   avg_focus_score: number
 }
+
+// 训练记录
+export interface TrainingRecord {
+  id: number
+  child_id: number
+  child_name: string
+  game_id: number
+  game_name: string
+  game_code: string
+  score: number
+  accuracy: number
+  focus_score: number
+  duration_seconds: number
+  difficulty_level: number
+  created_at: string
+}
+
+// 今日训练数据
+export interface TodayTraining {
+  date: string
+  total_records: number
+  total_children: number
+  total_duration: number
+  avg_accuracy: number
+  avg_focus_score: number
+  top_games: { game_name: string; count: number }[]
+  records: TrainingRecord[]
+}
+
+// 儿童评估报告
+export interface AssessmentReport {
+  child_id: number
+  child_name: string
+  age: number
+  age_group: string
+  generated_at: string
+  dimensions: {
+    name: string
+    score: number
+    level: string
+    description: string
+  }[]
+  overall_score: number
+  overall_level: string
+  recommendations: string[]
+  training_history: {
+    total_sessions: number
+    total_duration: number
+    avg_accuracy: number
+    improvement_rate: number
+  }
+  game_performance: {
+    game_name: string
+    game_code: string
+    play_count: number
+    avg_score: number
+    avg_accuracy: number
+  }[]
+}

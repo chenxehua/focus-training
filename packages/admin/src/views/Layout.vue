@@ -7,6 +7,7 @@
       </div>
       <el-menu
         :default-active="activeMenu"
+        :default-openeds="defaultOpeneds"
         router
         background-color="#1a1a2e"
         text-color="#a0a0a0"
@@ -44,6 +45,15 @@
           <el-icon><Gamepad /></el-icon>
           <span>游戏配置</span>
         </el-menu-item>
+        <el-sub-menu index="training">
+          <template #title>
+            <el-icon><Timer /></el-icon>
+            <span>训练管理</span>
+          </template>
+          <el-menu-item index="/today-training">今日训练</el-menu-item>
+          <el-menu-item index="/training-records">训练记录</el-menu-item>
+          <el-menu-item index="/assessment-reports">评估报告</el-menu-item>
+        </el-sub-menu>
         <el-menu-item index="/analytics">
           <el-icon><DataAnalysis /></el-icon>
           <span>数据分析</span>
@@ -93,6 +103,15 @@ const username = computed(() => {
 })
 
 const activeMenu = computed(() => route.path)
+
+const defaultOpeneds = computed(() => {
+  const path = route.path
+  if (path.startsWith('/users') || path.startsWith('/children')) return ['user']
+  if (path.startsWith('/orders') || path.startsWith('/members')) return ['business']
+  if (path.startsWith('/articles') || path.startsWith('/questions')) return ['content']
+  if (path.startsWith('/today-training') || path.startsWith('/training-records') || path.startsWith('/assessment-reports')) return ['training']
+  return []
+})
 
 const currentTitle = computed(() => {
   return (route.meta.title as string) || '仪表盘'

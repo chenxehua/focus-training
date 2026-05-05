@@ -11,16 +11,20 @@
           <template #default="{ row }">
             <div class="game-info-cell">
               <span class="name">{{ row.game_name }}</span>
-              <span class="type">{{ row.game_type }}</span>
+              <span class="type">{{ row.category }}</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="target_age_group" label="适用年龄" width="100" />
-        <el-table-column prop="difficulty_levels" label="难度等级" width="100" />
-        <el-table-column prop="is_free" label="是否免费" width="100">
+        <el-table-column label="适用年龄" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.is_free ? 'success' : 'warning'" size="small">
-              {{ row.is_free ? '免费' : '付费' }}
+            {{ row.min_age }}-{{ row.max_age }}岁
+          </template>
+        </el-table-column>
+        <el-table-column prop="difficulty_levels" label="难度等级" width="100" />
+        <el-table-column prop="requires_vip" label="是否免费" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.requires_vip === 0 ? 'success' : 'warning'" size="small">
+              {{ row.requires_vip === 0 ? '免费' : '付费' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -50,16 +54,17 @@
           <el-input v-model="form.game_name" />
         </el-form-item>
         <el-form-item label="游戏类型">
-          <el-input v-model="form.game_type" />
+          <el-input v-model="form.category" />
         </el-form-item>
         <el-form-item label="适用年龄">
-          <el-input v-model="form.target_age_group" placeholder="如: 4-12" />
+          <el-input-number v-model="form.min_age" :min="1" :max="18" /> -
+          <el-input-number v-model="form.max_age" :min="1" :max="18" /> 岁
         </el-form-item>
         <el-form-item label="难度等级数">
           <el-input-number v-model="form.difficulty_levels" :min="1" :max="10" />
         </el-form-item>
         <el-form-item label="是否免费">
-          <el-switch v-model="form.is_free" />
+          <el-switch :model-value="form.requires_vip === 0" @change="(val) => form.requires_vip = val ? 0 : 1" />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="form.status">
@@ -92,12 +97,13 @@ const editingId = ref<number | null>(null)
 
 const form = reactive({
   game_name: '',
-  game_type: '',
+  category: '',
   description: '',
   icon_url: '',
   difficulty_levels: 3,
-  target_age_group: '',
-  is_free: true,
+  min_age: 4,
+  max_age: 12,
+  requires_vip: 0,
   status: 'active'
 })
 
@@ -117,12 +123,13 @@ const handleEdit = (row: any) => {
   editingId.value = row.id
   Object.assign(form, {
     game_name: row.game_name,
-    game_type: row.game_type,
+    category: row.category,
     description: row.description,
     icon_url: row.icon_url,
     difficulty_levels: row.difficulty_levels,
-    target_age_group: row.target_age_group,
-    is_free: !!row.is_free,
+    min_age: row.min_age,
+    max_age: row.max_age,
+    requires_vip: row.requires_vip,
     status: row.status
   })
   dialogVisible.value = true

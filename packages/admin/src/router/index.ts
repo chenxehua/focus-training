@@ -63,6 +63,24 @@ const router = createRouter({
           meta: { title: '游戏配置' }
         },
         {
+          path: 'today-training',
+          name: 'TodayTraining',
+          component: () => import('@/views/TodayTraining.vue'),
+          meta: { title: '今日训练' }
+        },
+        {
+          path: 'training-records',
+          name: 'TrainingRecords',
+          component: () => import('@/views/TrainingRecords.vue'),
+          meta: { title: '训练记录' }
+        },
+        {
+          path: 'assessment-reports',
+          name: 'AssessmentReports',
+          component: () => import('@/views/AssessmentReports.vue'),
+          meta: { title: '评估报告' }
+        },
+        {
           path: 'analytics',
           name: 'Analytics',
           component: () => import('@/views/Analytics.vue'),
