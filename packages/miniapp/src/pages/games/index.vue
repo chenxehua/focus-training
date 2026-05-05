@@ -1,26 +1,59 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useGameStore } from '@/store/game'
+import { useUserStore } from '@/store/user'
 import { getGameList } from '@/api/game'
+import { getMembershipStatus } from '@/api/membership'
 import GameCard from '@/components/GameCard.vue'
 import type { GameInfo } from '@/store/game'
 
 const gameStore = useGameStore()
+const userStore = useUserStore()
 
 const allGames = ref<GameInfo[]>([])
 const selectedType = ref<string>('全部')
 const isLoading = ref(false)
+const isVip = ref(false)
 
+// 游戏分类标签（中文）
 const gameTypes = ['全部', '注意力', '记忆', '反应', '感知', '冥想', '观察', '计算', '听觉']
 
+// 根据分类筛选游戏 - 使用 category 字段匹配中文标签
 const filteredGames = computed(() => {
   if (selectedType.value === '全部') return allGames.value
-  return allGames.value.filter(g => g.gameType === selectedType.value)
+  return allGames.value.filter(g => g.category === selectedType.value)
 })
 
+// 根据会员状态判断游戏是否锁定
+function isGameLocked(game: GameInfo): boolean {
+  if (isVip.value) return false
+  // 免费游戏直接解锁
+  if (game.isFree) return false
+  // 非免费游戏需要会员
+  return true
+}
+
 function navigateToGame(game: GameInfo) {
-  if (game.gameCode === 'G001') {
-    uni.navigateTo({ url: '/pages/game-schulte/index' })
+  if (isGameLocked(game)) {
+    uni.showToast({ title: '升级会员解锁更多游戏', icon: 'none' })
+    uni.navigateTo({ url: '/pages/membership/index' })
+    return
+  }
+  const gamePageMap: Record<string, string> = {
+    'schulte': '/pages/game-schulte/index',
+    'audio_count': '/pages/game-audio/index',
+    'pattern_memory': '/pages/game-memory/index',
+    'visual_tracking': '/pages/game-visual/index',
+    'reaction_speed': '/pages/game-reaction/index',
+    'rhythm_tap': '/pages/game-rhythm/index',
+    'auditory_memory': '/pages/game-sound/index',
+    'maze_navigation': '/pages/game-maze/index',
+    'quick_sort': '/pages/game-sort/index',
+    'target_tracking': '/pages/game-tracking/index'
+  }
+  const url = gamePageMap[game.gameCode]
+  if (url) {
+    uni.navigateTo({ url })
   } else {
     uni.showToast({ title: '该游戏即将上线', icon: 'none' })
   }
@@ -29,9 +62,23 @@ function navigateToGame(game: GameInfo) {
 async function loadGames() {
   isLoading.value = true
   try {
-    const res = await getGameList()
-    allGames.value = res.data
-    gameStore.setGameList(res.data)
+    const [gamesRes] = await Promise.all([
+      getGameList()
+    ])
+    allGames.value = gamesRes.data
+    gameStore.setGameList(gamesRes.data)
+
+    // 检查会员状态
+    if (userStore.isLoggedIn) {
+      try {
+        const membershipRes = await getMembershipStatus()
+        if (membershipRes.data) {
+          isVip.value = membershipRes.data.is_vip === true || (membershipRes.data.days_remaining || 0) > 0
+        }
+      } catch (e) {
+        console.error('获取会员状态失败', e)
+      }
+    }
   } catch (error) {
     console.error(error)
   } finally {
@@ -42,9 +89,8 @@ async function loadGames() {
 onMounted(() => {
   if (gameStore.gameList.length > 0) {
     allGames.value = gameStore.gameList
-  } else {
-    loadGames()
   }
+  loadGames()
 })
 </script>
 
@@ -87,7 +133,7 @@ onMounted(() => {
         v-for="game in filteredGames"
         :key="game.id"
         :game="game"
-        :locked="game.gameCode !== 'G001'"
+        :locked="isGameLocked(game)"
         @play="navigateToGame"
       />
     </view>

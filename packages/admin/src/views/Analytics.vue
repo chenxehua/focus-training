@@ -14,25 +14,25 @@
     <!-- 训练趋势 -->
     <div class="chart-card">
       <h3>训练趋势</h3>
-      <div ref="trainingTrendChart" class="chart-container"></div>
+      <div ref="trainingTrendChartRef" class="chart-container"></div>
     </div>
 
     <!-- 年龄段分析 -->
     <div class="charts-row">
       <div class="chart-card">
         <h3>年龄段分布</h3>
-        <div ref="ageGroupChart" class="chart-container"></div>
+        <div ref="ageGroupChartRef" class="chart-container"></div>
       </div>
       <div class="chart-card">
         <h3>游戏使用统计</h3>
-        <div ref="gameStatsChart" class="chart-container"></div>
+        <div ref="gameStatsChartRef" class="chart-container"></div>
       </div>
     </div>
 
     <!-- 用户留存 -->
     <div class="chart-card">
       <h3>用户留存分析</h3>
-      <div ref="retentionChart" class="chart-container"></div>
+      <div ref="retentionChartRef" class="chart-container"></div>
     </div>
   </div>
 </template>

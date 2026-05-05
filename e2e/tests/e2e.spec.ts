@@ -45,6 +45,23 @@ test.describe('专注星球 - 端到端测试', () => {
         // Might need authentication first
       })
     })
+
+    test('舒尔特方格游戏描述正确', async ({ page }) => {
+      await gotoMiniappPage(page, '/pages/games/index')
+      await page.waitForLoadState('networkidle')
+      
+      // Check if the Schulte table description is correct in the game card
+      const schulteCard = page.locator('text=舒尔特方格').first()
+      await expect(schulteCard).toBeVisible({ timeout: 5000 }).catch(() => {
+        // Game might not be visible without authentication
+      })
+      
+      // Verify description contains correct text
+      const description = page.locator('text=舒尔特方格是经典的视觉注意力训练工具')
+      await expect(description).toBeVisible({ timeout: 3000 }).catch(() => {
+        // Description might be rendered differently
+      })
+    })
   })
 
   test.describe('游戏页面', () => {

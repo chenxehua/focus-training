@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专注星球 - 管理后台</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+    .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .login-box { background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 2px 20px rgba(0,0,0,0.1); width: 360px; }
+    .login-box h1 { font-size: 24px; color: #6C63FF; margin-bottom: 8px; text-align: center; }
+    .login-box p { color: #666; font-size: 14px; margin-bottom: 24px; text-align: center; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 14px; color: #333; margin-bottom: 6px; }
+    .form-group input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    .form-group input:focus { outline: none; border-color: #6C63FF; }
+    .btn { width: 100%; padding: 12px; background: #6C63FF; color: #fff; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
+    .btn:hover { background: #5a52d5; }
+    .btn:disabled { background: #ccc; cursor: not-allowed; }
+    .error { color: #ff4757; font-size: 13px; margin-top: 8px; text-align: center; }
+
+    .admin-container { display: none; min-height: 100vh; }
+    .header { background: #6C63FF; color: #fff; padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 18px; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .logout-btn { background: rgba(255,255,255,0.2); color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+
+    .main { display: flex; padding-top: 60px; }
+    .sidebar { width: 200px; background: #fff; height: calc(100vh - 60px); position: fixed; left: 0; top: 60px; padding: 16px 0; }
+    .sidebar-item { padding: 12px 24px; cursor: pointer; color: #666; font-size: 14px; }
+    .sidebar-item:hover, .sidebar-item.active { background: #f0f0ff; color: #6C63FF; }
+    .content { margin-left: 200px; padding: 24px; flex: 1; }
+
+    .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .card-title { font-size: 16px; font-weight: 600; color: #333; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .stat-value { font-size: 28px; font-weight: 700; color: #6C63FF; }
+    .stat-label { font-size: 13px; color: #888; margin-top: 4px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+    th { background: #f9f9f9; color: #666; font-weight: 500; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+    .badge-active { background: #e8f5e9; color: #4caf50; }
+    .badge-expired { background: #ffebee; color: #f44336; }
+    .action-btn { padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; margin-right: 4px; }
+    .btn-primary { background: #6C63FF; color: #fff; }
+    .btn-success { background: #4caf50; color: #fff; }
+
+    .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
+    .modal.show { display: flex; }
+    .modal-content { background: #fff; padding: 24px; border-radius: 8px; width: 400px; }
+    .modal-title { font-size: 18px; margin-bottom: 16px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    .modal-btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; }
+    .modal-btn-cancel { background: #eee; color: #333; }
+    .modal-btn-confirm { background: #6C63FF; color: #fff; }
+
+    .tab-nav { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab-btn { padding: 8px 16px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; }
+    .tab-btn.active { background: #6C63FF; color: #fff; border-color: #6C63FF; }
+
+    .loading { text-align: center; padding: 40px; color: #888; }
+    .empty { text-align: center; padding: 40px; color: #888; }
+  </style>
+</head>
+<body>
+  <!-- 登录页面 -->
+  <div id="loginPage" class="login-container">
+    <div class="login-box">
+      <h1>专注星球</h1>
+      <p>管理后台</p>
+      <form id="loginForm">
+        <div class="form-group">
+          <label>用户名</label>
+          <input type="text" id="username" value="admin" required>
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="password" value="admin123" required>
+        </div>
+        <button type="submit" class="btn" id="loginBtn">登录</button>
+        <div id="loginError" class="error"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 管理后台 -->
+  <div id="adminPage" class="admin-container">
+    <div class="header">
+      <h1>专注星球 · 管理后台</h1>
+      <div class="header-right">
+        <span id="adminName">管理员</span>
+        <button class="logout-btn" onclick="logout()">退出</button>
+      </div>
+    </div>
+    <div class="main">
+      <div class="sidebar">
+        <div class="sidebar-item active" data-tab="dashboard">仪表盘</div>
+        <div class="sidebar-item" data-tab="users">用户管理</div>
+        <div class="sidebar-item" data-tab="members">会员管理</div>
+        <div class="sidebar-item" data-tab="games">游戏管理</div>
+        <div class="sidebar-item" data-tab="orders">订单管理</div>
+        <div class="sidebar-item" data-tab="articles">内容管理</div>
+      </div>
+      <div class="content" id="content">
+        <div class="loading">加载中...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 开通会员弹窗 -->
+  <div id="grantModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-title">开通会员</div>
+      <form id="grantForm">
+        <div class="form-group">
+          <label>用户ID</label>
+          <input type="number" id="grantUserId" required>
+        </div>
+        <div class="form-group">
+          <label>会员等级</label>
+          <select id="grantTier" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">
+            <option value="free">免费</option>
+            <option value="basic">基础会员</option>
+            <option value="premium">高级会员</option>
+            <option value="vip" selected>VIP</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>开通天数</label>
+          <input type="number" id="grantDays" value="365" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="modal-btn modal-btn-cancel" onclick="closeGrantModal()">取消</button>
+          <button type="submit" class="modal-btn modal-btn-confirm">确认开通</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3000';
+    let token = localStorage.getItem('admin_token');
+
+    // 检查登录状态
+    if (token) {
+      showAdminPage();
+    }
+
+    // 登录
+    document.getElementById('loginForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = '登录中...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/admin-login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (data.code === 0 && data.data.token) {
+          token = data.data.token;
+          localStorage.setItem('admin_token', token);
+          showAdminPage();
+        } else {
+          document.getElementById('loginError').textContent = data.message || '登录失败';
+        }
+      } catch (err) {
+        document.getElementById('loginError').textContent = '网络错误，请检查服务器';
+      }
+      btn.disabled = false;
+      btn.textContent = '登录';
+    };
+
+    function logout() {
+      token = null;
+      localStorage.removeItem('admin_token');
+      document.getElementById('adminPage').style.display = 'none';
+      document.getElementById('loginPage').style.display = 'flex';
+    }
+
+    function showAdminPage() {
+      document.getElementById('loginPage').style.display = 'none';
+      document.getElementById('adminPage').style.display = 'block';
+      switchTab('dashboard');
+      setupSidebar();
+    }
+
+    function setupSidebar() {
+      document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.onclick = () => {
+          document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+          switchTab(item.dataset.tab);
+        };
+      });
+    }
+
+    async function api(path, options = {}) {
+      const res = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          ...(options.headers || {})
+        }
+      });
+      return res.json();
+    }
+
+    function switchTab(tab) {
+      const content = document.getElementById('content');
+      switch (tab) {
+        case 'dashboard': loadDashboard(); break;
+        case 'users': loadUsers(); break;
+        case 'members': loadMembers(); break;
+        case 'games': loadGames(); break;
+        case 'orders': loadOrders(); break;
+        case 'articles': loadArticles(); break;
+      }
+    }
+
+    // 仪表盘
+    async function loadDashboard() {
+      const data = await api('/api/admin/dashboard');
+      document.getElementById('content').innerHTML = `
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-value">${data.data.stats?.totalUsers || 0}</div><div class="stat-label">总用户数</div></div>
+          <div class="stat-card"><div class="stat-value">${data.data.stats?.todayTraining || 0}</div><div class="stat-label">今日训练</div></div>
+          <div class="stat-card"><div class="stat-value">${data.data.stats?.activeMembers || 0}</div><div class="stat-label">活跃会员</div></div>
+          <div class="stat-card"><div class="stat-value">${data.data.stats?.monthOrders || 0}</div><div class="stat-label">本月订单</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">游戏使用排行</div></div>
+          <table>
+            <thead><tr><th>游戏名称</th><th>编码</th><th>游玩次数</th></tr></thead>
+            <tbody>
+              ${(data.data.gameUsage || []).map(g => `<tr><td>${g.name}</td><td>${g.code}</td><td>${g.count}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // 用户管理
+    async function loadUsers() {
+      const data = await api('/api/admin/users');
+      document.getElementById('content').innerHTML = `
+        <div class="card">
+          <div class="card-header"><div class="card-title">用户列表 (${data.data?.total || 0})</div></div>
+          <table>
+            <thead><tr><th>ID</th><th>昵称</th><th>手机号</th><th>状态</th><th>注册时间</th></tr></thead>
+            <tbody>
+              ${(data.data?.list || []).map(u => `<tr><td>${u.id}</td><td>${u.nickname || '-'}</td><td>${u.phone || '-'}</td><td><span class="badge ${u.status === 1 ? 'badge-active' : 'badge-expired'}">${u.status === 1 ? '正常' : '禁用'}</span></td><td>${new Date(u.created_at).toLocaleDateString()}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // 会员管理
+    async function loadMembers() {
+      const data = await api('/api/admin/members');
+      document.getElementById('content').innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">会员列表</div>
+            <button class="btn btn-primary" onclick="openGrantModal()">开通会员</button>
+          </div>
+          <table>
+            <thead><tr><th>ID</th><th>用户</th><th>儿童</th><th>套餐</th><th>状态</th><th>到期时间</th></tr></thead>
+            <tbody>
+              ${(data.data?.list || []).map(m => `<tr><td>${m.id}</td><td>${m.user_name || '-'}</td><td>${m.child_name || '-'}</td><td>${m.tier || '-'}</td><td><span class="badge ${m.status == 1 ? 'badge-active' : 'badge-expired'}">${m.status == 1 ? '有效' : '过期'}</span></td><td>${m.end_date || '-'}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function openGrantModal() {
+      document.getElementById('grantModal').classList.add('show');
+    }
+
+    function closeGrantModal() {
+      document.getElementById('grantModal').classList.remove('show');
+    }
+
+    document.getElementById('grantForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const userId = document.getElementById('grantUserId').value;
+      const tier = document.getElementById('grantTier').value;
+      const durationDays = document.getElementById('grantDays').value;
+      const res = await api('/api/admin/members/grant', {
+        method: 'POST',
+        body: JSON.stringify({ userId: parseInt(userId), tier, durationDays: parseInt(durationDays) })
+      });
+      if (res.code === 0) {
+        alert('会员开通成功！');
+        closeGrantModal();
+        loadMembers();
+      } else {
+        alert(res.message || '开通失败');
+      }
+    };
+
+    // 游戏管理
+    async function loadGames() {
+      const data = await api('/api/admin/games');
+      document.getElementById('content').innerHTML = `
+        <div class="card">
+          <div class="card-header"><div class="card-title">游戏列表</div></div>
+          <table>
+            <thead><tr><th>ID</th><th>名称</th><th>编码</th><th>难度</th><th>VIP</th><th>状态</th></tr></thead>
+            <tbody>
+              ${(data.data || []).map(g => `<tr><td>${g.id}</td><td>${g.game_name}</td><td>${g.game_code}</td><td>${g.difficulty_levels}</td><td>${g.requires_vip == 1 ? '<span class="badge badge-expired">是</span>' : '<span class="badge badge-active">否</span>'}</td><td>${g.status == 1 ? '<span class="badge badge-active">启用</span>' : '<span class="badge badge-expired">禁用</span>'}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // 订单管理
+    async function loadOrders() {
+      const data = await api('/api/admin/orders');
+      document.getElementById('content').innerHTML = `
+        <div class="card">
+          <div class="card-header"><div class="card-title">订单列表</div></div>
+          <table>
+            <thead><tr><th>ID</th><th>订单号</th><th>用户</th><th>金额</th><th>状态</th><th>时间</th></tr></thead>
+            <tbody>
+              ${(data.data?.list || []).map(o => `<tr><td>${o.id}</td><td>${o.order_no}</td><td>${o.user_name || o.user_id}</td><td>¥${o.amount}</td><td><span class="badge ${o.pay_status == 1 ? 'badge-active' : 'badge-expired'}">${o.pay_status == 1 ? '已支付' : '待支付'}</span></td><td>${new Date(o.created_at).toLocaleDateString()}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // 内容管理
+    async function loadArticles() {
+      const data = await api('/api/admin/academy/articles');
+      document.getElementById('content').innerHTML = `
+        <div class="card">
+          <div class="card-header"><div class="card-title">文章列表</div></div>
+          <table>
+            <thead><tr><th>ID</th><th>标题</th><th>作者</th><th>状态</th><th>时间</th></tr></thead>
+            <tbody>
+              ${(data.data?.list || []).map(a => `<tr><td>${a.id}</td><td>${a.title}</td><td>${a.author || '-'}</td><td>${a.is_published == 1 ? '<span class="badge badge-active">已发布</span>' : '<span class="badge badge-expired">草稿</span>'}</td><td>${a.publish_date || '-'}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>

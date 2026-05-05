@@ -64,11 +64,11 @@
     <div class="charts-row">
       <div class="chart-card">
         <h3>用户增长趋势</h3>
-        <div ref="userTrendChart" class="chart-container"></div>
+        <div ref="userTrendChartRef" class="chart-container"></div>
       </div>
       <div class="chart-card">
         <h3>游戏使用排行</h3>
-        <div ref="gameUsageChart" class="chart-container"></div>
+        <div ref="gameUsageChartRef" class="chart-container"></div>
       </div>
     </div>
   </div>
@@ -94,12 +94,13 @@ const gameUsageData = ref<{ name: string; code: string; count: number }[]>([])
 
 let userTrendChart: echarts.ECharts | null = null
 let gameUsageChart: echarts.ECharts | null = null
+const userTrendChartRef = ref<HTMLDivElement>()
+const gameUsageChartRef = ref<HTMLDivElement>()
 
 const initCharts = () => {
   // 用户趋势图
-  const userTrendEl = document.getElementById('user-trend-chart')
-  if (userTrendEl) {
-    userTrendChart = echarts.init(userTrendEl)
+  if (userTrendChartRef.value) {
+    userTrendChart = echarts.init(userTrendChartRef.value)
     userTrendChart.setOption({
       tooltip: { trigger: 'axis' },
       grid: { left: 50, right: 20, bottom: 30, top: 20 },
@@ -121,9 +122,8 @@ const initCharts = () => {
   }
 
   // 游戏使用排行
-  const gameUsageEl = document.getElementById('game-usage-chart')
-  if (gameUsageEl) {
-    gameUsageChart = echarts.init(gameUsageEl)
+  if (gameUsageChartRef.value) {
+    gameUsageChart = echarts.init(gameUsageChartRef.value)
     gameUsageChart.setOption({
       tooltip: { trigger: 'axis' },
       grid: { left: 80, right: 20, bottom: 30, top: 20 },

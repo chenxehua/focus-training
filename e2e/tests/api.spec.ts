@@ -134,6 +134,10 @@ describe('游戏管理 API', () => {
     expect([200, 401, 500]).toContain(response.status)
     const body = response.json
     expect(body).toHaveProperty('code')
+    // 验证舒尔特方格游戏描述正确
+    if (body.code === 0 && body.data) {
+      expect(body.data.description).toContain('舒尔特方格是经典的视觉注意力训练工具')
+    }
   })
 
   test('获取游戏详情 - 不存在的游戏', async () => {

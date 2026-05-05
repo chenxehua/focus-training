@@ -1,6 +1,6 @@
 import { getStorage } from '@/utils/storage'
 
-const BASE_URL = 'http://localhost:3000' // 开发环境地址
+const BASE_URL = 'http://192.168.1.3:3000' // 开发环境地址
 
 const TOKEN_KEY = 'focus_token'
 

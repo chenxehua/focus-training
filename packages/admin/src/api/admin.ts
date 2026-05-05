@@ -50,6 +50,28 @@ export function updateMember(id: number, data: { status?: string; extendDays?: n
   return request.put<ApiResponse<{ message: string }>>(`/admin/members/${id}`, data)
 }
 
+// 开通会员
+export function grantMembership(data: {
+  userId: number
+  childId?: number
+  tier: 'free' | 'basic' | 'premium'
+  durationDays: number
+}) {
+  return request.post<ApiResponse<{
+    childId: number
+    membershipId: number
+    tier: string
+    startDate: string
+    endDate: string
+    status: number
+  }>>('/admin/members/grant', data)
+}
+
+// 获取用户列表 (用于开通会员时选择用户)
+export function getUserSelectList(params: { keyword?: string }) {
+  return request.get<ApiResponse<{ id: number; nickname: string; phone: string }[]>>('/admin/users/select', { params })
+}
+
 // 文章管理
 export function getArticleList(params: { page?: number; pageSize?: number; categoryId?: string; keyword?: string }) {
   return request.get<ApiResponse<PageResult<Article>>>('/admin/academy/articles', { params })

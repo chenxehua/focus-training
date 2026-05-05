@@ -22,10 +22,12 @@ export interface GameInfo {
   gameCode: string
   gameName: string
   gameType: string
+  category: string
   iconUrl: string
   difficultyLevels: number
   targetAgeGroup: string
   description: string
+  isFree: boolean
 }
 
 export const useGameStore = defineStore('game', () => {

@@ -47,20 +47,33 @@ export interface Child {
 export interface Order {
   id: number
   order_no: string
+  user_id: number
   user_name: string
   user_phone: string
+  openid: string
   amount: number
   total_amount?: number
+  discount_amount?: number
+  coupon_id?: number
   status: string
+  payment_method?: string
+  transaction_id?: string
   created_at: string
   pay_time?: string
+  cancel_time?: string
+  refund_time?: string
+  remark?: string
 }
 
 export interface Member {
   id: number
+  child_id: number
+  membership_id: number
   user_name: string
   user_phone: string
-  member_type: string
+  child_name: string
+  membership_name: string
+  tier: string
   start_date: string
   end_date: string
   status: string

@@ -15,6 +15,7 @@ router.get('/dashboard', adminController.getDashboardStats)
 
 // 用户管理
 router.get('/users', adminController.getUserList)
+router.get('/users/select', adminController.getUserSelectList)
 router.get('/users/:id', adminController.getUserDetail)
 router.put('/users/:id/status', adminController.updateUserStatus)
 
@@ -28,6 +29,7 @@ router.get('/orders/:id', adminController.getOrderDetail)
 // 会员管理
 router.get('/members', adminController.getMemberList)
 router.put('/members/:id', adminController.updateMember)
+router.post('/members/grant', adminController.grantMembership)
 
 // 内容管理 - 家长学院
 router.get('/academy/articles', adminController.getArticleList)

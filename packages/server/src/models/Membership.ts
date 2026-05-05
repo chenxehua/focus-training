@@ -1,19 +1,46 @@
 /**
  * 会员和订单模型
- * 提供会员和订单数据的增删改查操作
+ * 适配 focuskids 数据库结构
  */
 
 import { query, queryOne, execute } from '../config/database'
 
-export interface MembershipData {
-  id?: number
-  user_id: number
-  member_type: string
-  member_level?: string
+export interface DbMembership {
+  id: number
+  name: string
+  tier: 'free' | 'basic' | 'premium' | 'vip'
+  price: number
+  duration_days: number
+  benefits: string | null
+  features: string | null
+  sort_order: number
+  status: number
+  created_at: Date
+  updated_at: Date
+}
+
+export interface DbChildMembership {
+  id: number
+  child_id: number
+  membership_id: number
+  order_id: number | null
   start_date: Date
   end_date: Date
   status: number
-  auto_renew?: number
+  auto_renew: number
+  created_at: Date
+  updated_at: Date
+}
+
+export interface MembershipData {
+  id?: number
+  tier: string
+  name: string
+  start_date: Date
+  end_date: Date
+  status: number
+  days_remaining?: number
+  is_vip?: boolean
 }
 
 export interface OrderData {
@@ -21,27 +48,40 @@ export interface OrderData {
   order_no: string
   user_id: number
   child_id?: number
-  product_type: string
-  product_id: string
-  product_name: string
+  membership_id: number
   amount: number
-  pay_amount?: number
-  pay_channel?: string
   pay_status?: number
   pay_time?: Date | null
   transaction_id?: string
-  ext_data?: Record<string, unknown>
+  created_at: Date
 }
 
 export class MembershipModel {
   /**
-   * 获取用户会员状态
+   * 获取用户的有效会员（通过孩子的会员关联）
    */
   static async findByUserId(userId: number): Promise<MembershipData | null> {
-    return queryOne<MembershipData>(
-      'SELECT * FROM membership WHERE user_id = ? AND status = 1',
-      [userId]
-    )
+    // 通过 user -> child -> child_membership -> membership 查找用户的有效会员
+    const sql = `
+      SELECT cm.*, m.tier, m.name, m.benefits, m.features
+      FROM child_membership cm
+      JOIN membership m ON cm.membership_id = m.id
+      JOIN child c ON cm.child_id = c.id
+      WHERE c.user_id = ? AND cm.status = 1 AND cm.end_date >= CURDATE()
+      ORDER BY cm.end_date DESC
+      LIMIT 1
+    `
+    const result = await queryOne<any>(sql, [userId])
+    if (!result) return null
+
+    return {
+      id: result.id,
+      tier: result.tier,
+      name: result.name,
+      start_date: result.start_date,
+      end_date: result.end_date,
+      status: result.status
+    }
   }
 
   /**
@@ -54,178 +94,128 @@ export class MembershipModel {
   }
 
   /**
-   * 获取用户所有会员记录
+   * 获取用户的会员列表
    */
   static async findAllByUserId(userId: number): Promise<MembershipData[]> {
-    return query<MembershipData>(
-      'SELECT * FROM membership WHERE user_id = ? ORDER BY created_at DESC',
-      [userId]
-    )
+    const sql = `
+      SELECT cm.*, m.tier, m.name
+      FROM child_membership cm
+      JOIN membership m ON cm.membership_id = m.id
+      JOIN child c ON cm.child_id = c.id
+      WHERE c.user_id = ?
+      ORDER BY cm.created_at DESC
+    `
+    return query(sql, [userId])
   }
 
   /**
-   * 创建或更新会员
+   * 创建或更新会员（通过孩子）
    */
-  static async upsert(data: {
-    user_id: number
-    member_type: string
-    member_level?: string
-    start_date: Date
-    end_date: Date
+  static async upsertChildMembership(data: {
+    childId: number
+    membershipId: number
+    startDate: Date
+    endDate: Date
   }): Promise<number> {
-    const existing = await queryOne<{ id: number }>(
-      'SELECT id FROM membership WHERE user_id = ?',
-      [data.user_id]
+    // 检查是否已有有效会员，有则顺延
+    const existing = await queryOne<DbChildMembership>(
+      'SELECT * FROM child_membership WHERE child_id = ? AND status = 1 AND end_date >= CURDATE()',
+      [data.childId]
     )
 
     if (existing) {
+      const newEndDate = new Date(existing.end_date)
+      newEndDate.setDate(newEndDate.getDate() + Math.ceil((data.endDate.getTime() - data.startDate.getTime()) / (1000 * 60 * 60 * 24)))
+
       await execute(
-        'UPDATE membership SET member_type = ?, member_level = ?, start_date = ?, end_date = ?, updated_at = NOW() WHERE id = ?',
-        [data.member_type, data.member_level ?? 'vip', data.start_date, data.end_date, existing.id]
+        'UPDATE child_membership SET end_date = ?, membership_id = ?, status = 1 WHERE id = ?',
+        [newEndDate, data.membershipId, existing.id]
       )
       return existing.id
     } else {
       const result = await execute(
-        'INSERT INTO membership (user_id, member_type, member_level, start_date, end_date, status, auto_renew) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [data.user_id, data.member_type, data.member_level ?? 'vip', data.start_date, data.end_date, 1, 0]
+        'INSERT INTO child_membership (child_id, membership_id, start_date, end_date, status) VALUES (?, ?, ?, ?, 1)',
+        [data.childId, data.membershipId, data.startDate, data.endDate]
       )
       return result.insertId
     }
   }
 
   /**
-   * 更新会员状态
+   * 获取会员套餐列表
    */
-  static async updateStatus(id: number, status: number): Promise<void> {
-    await execute('UPDATE membership SET status = ?, updated_at = NOW() WHERE id = ?', [status, id])
+  static async findAllPackages(): Promise<DbMembership[]> {
+    return query('SELECT * FROM membership WHERE status = 1 ORDER BY sort_order ASC')
   }
 
   /**
-   * 续费会员
+   * 获取会员套餐详情
    */
-  static async renew(userId: number, memberType: string, days: number): Promise<void> {
-    const existing = await this.findByUserId(userId)
-    const now = new Date()
+  static async findPackageById(id: number): Promise<DbMembership | null> {
+    return queryOne<DbMembership>('SELECT * FROM membership WHERE id = ?', [id])
+  }
 
-    if (existing && new Date(existing.end_date) > now) {
-      // 续费：从当前结束日期延长
-      const newEndDate = new Date(existing.end_date)
-      newEndDate.setDate(newEndDate.getDate() + days)
-      await execute(
-        'UPDATE membership SET end_date = ?, member_type = ?, updated_at = NOW() WHERE user_id = ?',
-        [newEndDate, memberType, userId]
-      )
-    } else {
-      // 新购买：从现在计算
-      const endDate = new Date()
-      endDate.setDate(endDate.getDate() + days)
-      await this.upsert({
-        user_id: userId,
-        member_type: memberType,
-        start_date: now,
-        end_date: endDate
-      })
-    }
+  /**
+   * 获取用户的所有孩子
+   */
+  static async getUserChildren(userId: number): Promise<any[]> {
+    return query('SELECT * FROM child WHERE user_id = ? AND status = 1', [userId])
   }
 }
 
 export class OrderModel {
   /**
-   * 根据订单号查询订单
-   */
-  static async findByOrderNo(orderNo: string): Promise<OrderData | null> {
-    return queryOne<OrderData>('SELECT * FROM `order` WHERE order_no = ?', [orderNo])
-  }
-
-  /**
-   * 获取用户的所有订单
-   */
-  static async findByUserId(userId: number, limit = 50): Promise<OrderData[]> {
-    return query<OrderData>(
-      'SELECT * FROM `order` WHERE user_id = ? ORDER BY created_at DESC LIMIT ?',
-      [userId, limit]
-    )
-  }
-
-  /**
-   * 获取用户已支付的订单
-   */
-  static async findPaidByUserId(userId: number, limit = 50): Promise<OrderData[]> {
-    return query<OrderData>(
-      'SELECT * FROM `order` WHERE user_id = ? AND pay_status = 1 ORDER BY created_at DESC LIMIT ?',
-      [userId, limit]
-    )
-  }
-
-  /**
    * 创建订单
    */
-  static async create(data: {
-    order_no: string
-    user_id: number
-    child_id?: number
-    membership_id?: number
+  static async createOrder(data: {
+    orderNo: string
+    userId: number
+    childId?: number
+    membershipId: number
     amount: number
-    status?: 'pending' | 'paid' | 'cancelled' | 'refunded'
-    pay_method?: string
-    pay_time?: Date | null
-    transaction_id?: string
-    ext_data?: Record<string, unknown>
   }): Promise<number> {
     const result = await execute(
-      'INSERT INTO `order` (order_no, user_id, child_id, membership_id, amount, status, pay_method, pay_time, transaction_id, ext_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [
-        data.order_no,
-        data.user_id,
-        data.child_id ?? null,
-        data.membership_id ?? null,
-        data.amount,
-        data.status ?? 'pending',
-        data.pay_method ?? null,
-        data.pay_time ?? null,
-        data.transaction_id ?? null,
-        JSON.stringify(data.ext_data ?? {})
-      ]
+      `INSERT INTO \`order\` (order_no, user_id, child_id, membership_id, amount, pay_status, created_at)
+       VALUES (?, ?, ?, ?, ?, 0, NOW())`,
+      [data.orderNo, data.userId, data.childId || null, data.membershipId, data.amount]
     )
     return result.insertId
   }
 
   /**
-   * 更新支付状态
+   * 更新订单支付状态
    */
   static async updatePayStatus(orderNo: string, status: number, transactionId?: string): Promise<void> {
-    if (status === 1) {
+    if (transactionId) {
       await execute(
-        'UPDATE `order` SET pay_status = 1, pay_time = NOW(), transaction_id = ?, updated_at = NOW() WHERE order_no = ?',
-        [transactionId ?? null, orderNo]
+        "UPDATE \`order\` SET pay_status = ?, transaction_id = ?, pay_time = NOW() WHERE order_no = ?",
+        [status, transactionId, orderNo]
       )
     } else {
       await execute(
-        'UPDATE `order` SET pay_status = ?, updated_at = NOW() WHERE order_no = ?',
+        "UPDATE \`order\` SET pay_status = ?, pay_time = NOW() WHERE order_no = ?",
         [status, orderNo]
       )
     }
   }
 
   /**
-   * 取消订单
+   * 获取用户订单列表
    */
-  static async cancel(orderNo: string): Promise<void> {
-    await execute(
-      'UPDATE `order` SET pay_status = 2, updated_at = NOW() WHERE order_no = ?',
-      [orderNo]
+  static async findByUserId(userId: number, limit = 50): Promise<OrderData[]> {
+    return query(
+      `SELECT * FROM \`order\` WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`,
+      [userId, limit]
     )
   }
 
   /**
-   * 退款订单
+   * 获取订单详情
    */
-  static async refund(orderNo: string): Promise<void> {
-    await execute(
-      'UPDATE `order` SET pay_status = 3, updated_at = NOW() WHERE order_no = ?',
+  static async findByOrderNo(orderNo: string): Promise<OrderData | null> {
+    return queryOne<OrderData>(
+      'SELECT * FROM \`order\` WHERE order_no = ?',
       [orderNo]
     )
   }
 }
-
-export default { MembershipModel, OrderModel }

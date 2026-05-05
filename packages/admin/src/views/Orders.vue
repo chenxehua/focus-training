@@ -79,18 +79,69 @@
         @current-change="handlePageChange"
       />
     </div>
+
+    <!-- 订单详情弹窗 -->
+    <el-dialog v-model="detailVisible" title="订单详情" width="650px">
+      <div v-if="orderDetail" class="order-detail-content">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="订单号" :span="2">
+            {{ orderDetail.order_no }}
+          </el-descriptions-item>
+          <el-descriptions-item label="订单状态">
+            <el-tag :type="getStatusType(orderDetail.status)" size="small">
+              {{ getStatusText(orderDetail.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="支付方式">
+            {{ orderDetail.payment_method || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="订单金额">
+            <span class="amount">¥{{ orderDetail.amount }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="优惠金额">
+            <span class="discount">-¥{{ orderDetail.discount_amount || 0 }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="交易流水号" :span="2">
+            {{ orderDetail.transaction_id || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="下单时间">
+            {{ formatDate(orderDetail.created_at) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="支付时间">
+            {{ orderDetail.pay_time ? formatDate(orderDetail.pay_time) : '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="用户ID">
+            {{ orderDetail.user_id }}
+          </el-descriptions-item>
+          <el-descriptions-item label="用户名称">
+            {{ orderDetail.user_name || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="用户手机">
+            {{ orderDetail.user_phone || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="OpenID" :span="2">
+            {{ orderDetail.openid || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item v-if="orderDetail.remark" label="备注" :span="2">
+            {{ orderDetail.remark }}
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { getOrderList } from '@/api/admin'
+import { getOrderList, getOrderDetail } from '@/api/admin'
 import type { Order } from '@/types'
 
 const statusFilter = ref('')
 const dateRange = ref<[string, string] | null>(null)
 const loading = ref(false)
 const orderList = ref<Order[]>([])
+const detailVisible = ref(false)
+const orderDetail = ref<Order | null>(null)
 
 const pagination = reactive({
   page: 1,
@@ -139,8 +190,14 @@ const handlePageChange = (page: number) => {
   fetchOrders()
 }
 
-const handleViewDetail = (id: number) => {
-  console.log('查看订单详情:', id)
+const handleViewDetail = async (id: number) => {
+  try {
+    const res = await getOrderDetail(id)
+    orderDetail.value = res.data
+    detailVisible.value = true
+  } catch (error) {
+    console.error('获取订单详情失败:', error)
+  }
 }
 
 const getStatusType = (status: string) => {
@@ -209,9 +266,17 @@ onMounted(() => {
   font-weight: 600;
 }
 
+.discount {
+  color: #52c41a;
+}
+
 .pagination-container {
   display: flex;
   justify-content: flex-end;
   margin-top: 20px;
+}
+
+.order-detail-content {
+  padding: 10px 0;
 }
 </style>

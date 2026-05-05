@@ -9,6 +9,7 @@
         <el-option label="过期会员" value="expired" />
       </el-select>
       <el-button type="primary" @click="handleSearch">搜索</el-button>
+      <el-button type="success" @click="handleGrant">开通会员</el-button>
     </div>
 
     <!-- 数据表格 -->
@@ -24,21 +25,31 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="member_type" label="会员类型" width="120">
+        <el-table-column label="儿童信息" min-width="120">
           <template #default="{ row }">
-            <el-tag :type="getMemberTypeColor(row.member_type)" size="small">
-              {{ getMemberTypeText(row.member_type) }}
+            <div>
+              <p>{{ row.child_name || '-' }}</p>
+              <p class="child-id">ID: {{ row.child_id }}</p>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="membership_name" label="会员套餐" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getMemberTypeColor(row.tier)" size="small">
+              {{ row.membership_name || row.tier }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="start_date" label="开始日期" width="120">
           <template #default="{ row }">
-            {{ row.start_date }}
+            {{ row.start_date || '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="end_date" label="到期日期" width="120">
           <template #default="{ row }">
-            {{ row.end_date || '永久' }}
+            <span :class="{ 'expired': isExpired(row.end_date) }">
+              {{ row.end_date || '永久' }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
@@ -90,25 +101,128 @@
         <el-button type="primary" @click="handleExtendConfirm">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 开通会员弹窗 -->
+    <el-dialog v-model="grantVisible" title="开通会员" width="500px">
+      <el-form :model="grantForm" label-width="100px" :rules="grantRules" ref="grantFormRef">
+        <el-form-item label="用户搜索" prop="userId">
+          <el-select
+            v-model="grantForm.userId"
+            filterable
+            remote
+            reserve-keyword
+            placeholder="输入用户名或手机号搜索"
+            :remote-method="searchUsers"
+            :loading="userLoading"
+            style="width: 100%"
+            @change="handleUserChange"
+          >
+            <el-option
+              v-for="user in userOptions"
+              :key="user.id"
+              :label="`${user.nickname || '用户'}(${user.phone || '无手机'})`"
+              :value="user.id"
+            >
+              <span>{{ user.nickname || '用户' }}</span>
+              <span style="color: #999; font-size: 12px; margin-left: 8px">{{ user.phone || '' }}</span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关联儿童">
+          <el-select
+            v-model="grantForm.childId"
+            placeholder="请先选择用户"
+            style="width: 100%"
+            :disabled="!grantForm.userId"
+          >
+            <el-option
+              v-for="child in childOptions"
+              :key="child.id"
+              :label="`${child.name}(${child.age}岁)`"
+              :value="child.id"
+            >
+              <span>{{ child.name }}</span>
+              <span style="color: #999; font-size: 12px; margin-left: 8px">{{ child.age }}岁</span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="会员套餐" prop="tier">
+          <el-radio-group v-model="grantForm.tier">
+            <el-radio label="basic">
+              年度会员
+              <span style="color: #999; font-size: 12px; margin-left: 8px">¥199/年</span>
+            </el-radio>
+            <el-radio label="premium">
+              高级会员
+              <span style="color: #999; font-size: 12px; margin-left: 8px">¥399/年</span>
+            </el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="开通时长" prop="durationDays">
+          <el-input-number v-model="grantForm.durationDays" :min="1" :max="365" />
+          <span style="margin-left: 8px">天</span>
+          <div class="duration-hint">
+            <span v-if="grantForm.tier === 'basic'">预计到期: {{ calculateEndDate() }}</span>
+            <span v-else-if="grantForm.tier === 'premium'">预计到期: {{ calculateEndDate() }}</span>
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="grantVisible = false">取消</el-button>
+        <el-button type="primary" :loading="grantLoading" @click="handleGrantConfirm">确定开通</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getMemberList, updateMember } from '@/api/admin'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { getMemberList, updateMember, grantMembership, getUserSelectList, getUserDetail } from '@/api/admin'
 import type { Member } from '@/types'
+
+interface UserOption {
+  id: number
+  nickname: string
+  phone: string
+}
+
+interface ChildOption {
+  id: number
+  name: string
+  age: number
+}
 
 const statusFilter = ref('')
 const loading = ref(false)
 const memberList = ref<Member[]>([])
 const extendVisible = ref(false)
+const grantVisible = ref(false)
+const grantLoading = ref(false)
+const userLoading = ref(false)
+const grantFormRef = ref<FormInstance>()
 
 const extendForm = reactive({
   id: 0,
   currentEnd: '',
   days: 30
 })
+
+const grantForm = reactive({
+  userId: null as number | null,
+  childId: null as number | null,
+  tier: 'basic',
+  durationDays: 365
+})
+
+const grantRules: FormRules = {
+  userId: [{ required: true, message: '请选择用户', trigger: 'change' }],
+  tier: [{ required: true, message: '请选择会员套餐', trigger: 'change' }],
+  durationDays: [{ required: true, message: '请设置开通时长', trigger: 'change' }]
+}
+
+const userOptions = ref<UserOption[]>([])
+const childOptions = ref<ChildOption[]>([])
 
 const pagination = reactive({
   page: 1,
@@ -166,22 +280,105 @@ const handleExtendConfirm = async () => {
   }
 }
 
+const handleGrant = () => {
+  grantForm.userId = null
+  grantForm.childId = null
+  grantForm.tier = 'basic'
+  grantForm.durationDays = 365
+  userOptions.value = []
+  childOptions.value = []
+  grantVisible.value = true
+}
+
+const searchUsers = async (keyword: string) => {
+  if (!keyword) {
+    userOptions.value = []
+    return
+  }
+  userLoading.value = true
+  try {
+    const res = await getUserSelectList({ keyword })
+    userOptions.value = res.data || []
+  } catch (error) {
+    console.error('搜索用户失败:', error)
+  } finally {
+    userLoading.value = false
+  }
+}
+
+const handleUserChange = async (userId: number) => {
+  grantForm.childId = null
+  childOptions.value = []
+  if (userId) {
+    try {
+      const res = await getUserDetail(userId)
+      if (res.data.children && res.data.children.length > 0) {
+        childOptions.value = res.data.children.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          age: c.age
+        }))
+        grantForm.childId = childOptions.value[0].id
+      }
+    } catch (error) {
+      console.error('获取用户儿童信息失败:', error)
+    }
+  }
+}
+
+const calculateEndDate = () => {
+  const today = new Date()
+  const endDate = new Date(today)
+  endDate.setDate(endDate.getDate() + grantForm.durationDays)
+  return endDate.toLocaleDateString('zh-CN')
+}
+
+const handleGrantConfirm = async () => {
+  if (!grantFormRef.value) return
+  
+  try {
+    await grantFormRef.value.validate()
+  } catch {
+    return
+  }
+  
+  if (!grantForm.userId) {
+    ElMessage.warning('请选择用户')
+    return
+  }
+  
+  grantLoading.value = true
+  try {
+    await grantMembership({
+      userId: grantForm.userId,
+      childId: grantForm.childId || undefined,
+      tier: grantForm.tier as 'basic' | 'premium',
+      durationDays: grantForm.durationDays
+    })
+    ElMessage.success('开通会员成功')
+    grantVisible.value = false
+    fetchMembers()
+  } catch (error: any) {
+    ElMessage.error(error.message || '开通会员失败')
+  } finally {
+    grantLoading.value = false
+  }
+}
+
 const getMemberTypeColor = (type: string) => {
   const colors: Record<string, string> = {
-    month: 'info',
-    quarter: 'warning',
-    year: 'success',
-    lifetime: 'danger'
+    free: 'info',
+    basic: 'success',
+    premium: 'danger'
   }
   return colors[type] || 'info'
 }
 
 const getMemberTypeText = (type: string) => {
   const texts: Record<string, string> = {
-    month: '月卡',
-    quarter: '季卡',
-    year: '年卡',
-    lifetime: '永久'
+    free: '免费',
+    basic: '年度',
+    premium: '高级'
   }
   return texts[type] || type
 }
@@ -227,14 +424,25 @@ onMounted(() => {
   padding: 20px;
 }
 
-.phone {
+.phone, .child-id {
   font-size: 12px;
   color: #999;
+}
+
+.expired {
+  color: #999;
+  text-decoration: line-through;
 }
 
 .pagination-container {
   display: flex;
   justify-content: flex-end;
   margin-top: 20px;
+}
+
+.duration-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #999;
 }
 </style>

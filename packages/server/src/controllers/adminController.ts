@@ -178,6 +178,37 @@ export async function getUserDetail(req: AdminRequest, res: Response) {
 }
 
 /**
+ * 获取用户下拉列表 (用于选择用户)
+ * GET /api/admin/users/select
+ */
+export async function getUserSelectList(req: AdminRequest, res: Response) {
+  try {
+    const keyword = req.query.keyword as string
+    
+    let whereClause = 'WHERE status = 1'
+    const params: any[] = []
+    
+    if (keyword) {
+      whereClause += ' AND (nickname LIKE ? OR phone LIKE ?)'
+      params.push(`%${keyword}%`, `%${keyword}%`)
+    }
+    
+    const sql = `
+      SELECT id, nickname, phone 
+      FROM user ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT 50
+    `
+    const users = await query(sql, params)
+    
+    res.json(successResponse(users))
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+    res.status(500).json(errorResponse('获取用户列表失败'))
+  }
+}
+
+/**
  * 更新用户状态
  * PUT /api/admin/users/:id/status
  */
@@ -359,19 +390,19 @@ export async function getMemberList(req: AdminRequest, res: Response) {
     const page = parseInt(req.query.page as string) || 1
     const pageSize = parseInt(req.query.pageSize as string) || 20
     const status = req.query.status as string // active, expired, pending
-    
+
     let whereClause = 'WHERE 1=1'
     const params: any[] = []
-    
+
     if (status === 'active') {
       whereClause += " AND m.status = 1 AND m.end_date > CURDATE()"
     } else if (status === 'expired') {
       whereClause += " AND (m.status != 1 OR m.end_date <= CURDATE())"
     }
-    
+
     const countSql = `SELECT COUNT(*) as total FROM child_membership m ${whereClause}`
     const countResult = await queryOne<{ total: number }>(countSql, params)
-    
+
     const offset = (page - 1) * pageSize
     const listSql = `
       SELECT m.*, u.nickname as user_name, u.phone as user_phone,
@@ -385,7 +416,7 @@ export async function getMemberList(req: AdminRequest, res: Response) {
       LIMIT ${pageSize} OFFSET ${offset}
     `
     const list = await query(listSql, params)
-    
+
     res.json(successResponse({
       list,
       total: countResult?.total ?? 0,
@@ -406,30 +437,112 @@ export async function updateMember(req: AdminRequest, res: Response) {
   try {
     const memberId = parseInt(req.params.id)
     const { status, extendDays } = req.body
-    
+
     if (extendDays) {
       // 延长会员时长
       const memberSql = 'SELECT * FROM child_membership WHERE id = ?'
       const member = await queryOne<any>(memberSql, [memberId])
-      
+
       if (!member) {
         return res.status(404).json(errorResponse('会员不存在'))
       }
-      
+
       const newEndDate = new Date(member.end_date || new Date())
       newEndDate.setDate(newEndDate.getDate() + extendDays)
-      
+
       const updateSql = "UPDATE child_membership SET end_date = ?, status = 1 WHERE id = ?"
       await execute(updateSql, [newEndDate, memberId])
     } else if (status !== undefined) {
       const updateSql = 'UPDATE child_membership SET status = ? WHERE id = ?'
       await execute(updateSql, [status, memberId])
     }
-    
+
     res.json(successResponse({ message: '更新成功' }))
   } catch (error) {
     console.error('更新会员失败:', error)
     res.status(500).json(errorResponse('更新会员失败'))
+  }
+}
+
+/**
+ * 为用户开通会员
+ * POST /api/admin/members/grant
+ */
+export async function grantMembership(req: AdminRequest, res: Response) {
+  try {
+    const { userId, childId, tier, durationDays } = req.body
+
+    if (!userId || !tier || !durationDays) {
+      return res.status(400).json(errorResponse('缺少必要参数'))
+    }
+
+    // 查找或创建会员套餐
+    let membershipSql = 'SELECT * FROM membership WHERE tier = ?'
+    let membership = await queryOne<any>(membershipSql, [tier])
+
+    if (!membership) {
+      // 创建默认套餐
+      const insertMembershipSql = `
+        INSERT INTO membership (name, tier, price, duration_days, features, benefits)
+        VALUES (?, ?, 0, ?, '["all_games"]', '["standard_support"]')
+      `
+      const result = await execute(insertMembershipSql, [`${tier.toUpperCase()}会员`, tier, durationDays])
+      membership = { id: result.insertId, tier, duration_days: durationDays }
+    }
+
+    const startDate = new Date()
+    const endDate = new Date()
+    endDate.setDate(endDate.getDate() + durationDays)
+
+    // 确定要开通的 child_id
+    let targetChildId = childId
+    if (!targetChildId) {
+      // 如果没有指定 childId，获取用户的第一个孩子
+      const childSql = 'SELECT id FROM child WHERE user_id = ? AND status = 1 LIMIT 1'
+      const child = await queryOne<{ id: number }>(childSql, [userId])
+      if (!child) {
+        return res.status(400).json(errorResponse('该用户没有关联的儿童，请先添加儿童'))
+      }
+      targetChildId = child.id
+    }
+
+    // 检查是否已有有效会员，有则顺延
+    const existingSql = 'SELECT * FROM child_membership WHERE child_id = ? AND status = 1 AND end_date > CURDATE()'
+    const existing = await queryOne<any>(existingSql, [targetChildId])
+
+    let finalStartDate = startDate
+    let finalEndDate = endDate
+
+    if (existing) {
+      // 已有有效会员，顺延
+      finalStartDate = new Date(existing.end_date)
+      finalEndDate = new Date(existing.end_date)
+      finalEndDate.setDate(finalEndDate.getDate() + durationDays)
+    }
+
+    // 插入或更新会员记录
+    if (existing) {
+      const extendSql = 'UPDATE child_membership SET end_date = ?, membership_id = ?, status = 1 WHERE id = ?'
+      await execute(extendSql, [finalEndDate, membership.id, existing.id])
+    } else {
+      const insertSql = `
+        INSERT INTO child_membership (child_id, membership_id, start_date, end_date, status)
+        VALUES (?, ?, ?, ?, 1)
+      `
+      await execute(insertSql, [targetChildId, membership.id, finalStartDate, finalEndDate])
+    }
+
+    res.json(successResponse({
+      childId: targetChildId,
+      membershipId: membership.id,
+      tier,
+      startDate: finalStartDate.toISOString().split('T')[0],
+      endDate: finalEndDate.toISOString().split('T')[0],
+      status: 1
+    }))
+  } catch (error) {
+    console.error('开通会员失败:', error)
+    res.status(500).json(errorResponse('开通会员失败'))
   }
 }
 

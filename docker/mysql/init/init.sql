@@ -232,7 +232,7 @@ CREATE TABLE IF NOT EXISTS `focus_report` (
 
 -- 插入游戏数据
 INSERT INTO `game` (`game_code`, `game_name`, `description`, `category`, `difficulty_levels`, `training_focus`, `requires_vip`, `sort_order`) VALUES
-('schulte', '舒尔特方格', '通过寻找并按顺序点击数字方格，训练视觉搜索和持续注意力', 'visual', 5, '视觉搜索,持续注意', 0, 1),
+('schulte', '舒尔特方格', '舒尔特方格是经典的视觉注意力训练工具，通过在方格中寻找并按顺序点击数字来训练视觉扫描能力和专注力', 'visual', 5, '视觉搜索,持续注意', 0, 1),
 ('audio_count', '听声辨数', '仔细听系统播放的声音序列，选择听到的数量', 'auditory', 5, '听觉注意,工作记忆', 0, 2),
 ('pattern_memory', '图案记忆', '记住并匹配不同的图案组合', 'memory', 5, '视觉记忆,模式识别', 0, 3),
 ('visual_tracking', '视觉追踪', '追踪移动的目标同时忽略干扰物', 'visual', 5, '视觉追踪,抗干扰', 0, 0),

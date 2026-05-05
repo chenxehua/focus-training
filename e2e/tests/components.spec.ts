@@ -191,6 +191,15 @@ describe('【首页组件交互】pages/index/index', () => {
 })
 
 describe('【游戏广场组件交互】pages/games/index', () => {
+  test('舒尔特方格游戏描述正确', async () => {
+    const response = await apiFetch('/api/game/schulte')
+    expect(response.status).toBe(200)
+    const body = response.json
+    expect(body.code).toBe(0)
+    expect(body.data).toBeDefined()
+    expect(body.data.description).toContain('舒尔特方格是经典的视觉注意力训练工具')
+  })
+
   test('筛选游戏类型', async () => {
     const types = ['注意力', '记忆', '反应', '感知', '冥想', '观察', '计算', '听觉']
     
@@ -203,6 +212,17 @@ describe('【游戏广场组件交互】pages/games/index', () => {
   test('搜索游戏', async () => {
     const response = await apiFetch('/api/game/list?keyword=舒尔特')
     expect([200, 401, 500].includes(response.status)).toBeTruthy()
+  })
+
+  test('搜索舒尔特方格游戏描述正确', async () => {
+    const response = await apiFetch('/api/game/list?keyword=舒尔特')
+    expect(response.status).toBe(200)
+    const body = response.json
+    if (body.code === 0 && body.data && body.data.length > 0) {
+      const schulteGame = body.data.find((g: any) => g.gameCode === 'schulte')
+      expect(schulteGame).toBeDefined()
+      expect(schulteGame.description).toContain('舒尔特方格是经典的视觉注意力训练工具')
+    }
   })
 
   test('获取游戏详情', async () => {

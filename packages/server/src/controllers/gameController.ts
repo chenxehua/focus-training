@@ -9,8 +9,52 @@ import type { AuthRequest, SubmitRecordBody, DbGame } from '../types'
 export class GameController {
   static async getGameList(_req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const games = await query<DbGame>(
+      const games = await query<any>(
         'SELECT * FROM game WHERE status = 1 ORDER BY id ASC'
+      )
+      const gameTypeMap: Record<string, string> = {
+        'attention': '注意力', 'memory': '记忆', 'reaction': '反应',
+        'perception': '感知', 'meditation': '冥想', 'observation': '观察',
+        'calculation': '计算', 'auditory': '听觉', 'cognitive': '认知',
+        'visual': '视觉', 'rhythm': '节奏', 'spatial': '空间'
+      }
+      res.json(
+        successResponse(
+          games.map(g => ({
+            id: g.id,
+            gameCode: g.game_code,
+            gameName: g.game_name,
+            gameType: g.category || 'other',
+            category: gameTypeMap[g.category] || g.category || '其他',
+            difficultyLevels: g.difficulty_levels,
+            targetAgeGroup: `${g.min_age}-${g.max_age}`,
+            description: g.description,
+            isFree: g.requires_vip === 0,
+          }))
+        )
+      )
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  static async getCategories(_req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const categories = await query<{ category: string; count: number }>(
+        'SELECT category, COUNT(*) AS count FROM game WHERE status = 1 GROUP BY category'
+      )
+      res.json(successResponse(categories))
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  static async searchGames(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const keyword = req.query['keyword'] as string || ''
+      const games = await query<DbGame>(
+        'SELECT * FROM game WHERE status = 1 AND (game_name LIKE ? OR description LIKE ?) ORDER BY id ASC',
+        [`%${keyword}%`, `%${keyword}%`]
       )
       res.json(
         successResponse(
@@ -19,11 +63,7 @@ export class GameController {
             gameCode: g.game_code,
             gameName: g.game_name,
             gameType: g.game_type,
-            iconUrl: g.icon_url,
-            difficultyLevels: g.difficulty_levels,
-            targetAgeGroup: g.target_age_group,
             description: g.description,
-            isFree: g.is_free,
           }))
         )
       )

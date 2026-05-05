@@ -11,6 +11,18 @@ const router = Router()
  */
 router.get('/list', GameController.getGameList)
 
+/**
+ * GET /api/game/categories
+ * 获取游戏分类（无需登录）
+ */
+router.get('/categories', GameController.getCategories)
+
+/**
+ * GET /api/game/search
+ * 搜索游戏（无需登录）
+ */
+router.get('/search', GameController.searchGames)
+
 // 以下需要登录
 router.use(authMiddleware)
 

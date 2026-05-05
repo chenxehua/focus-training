@@ -99,11 +99,20 @@ function handleLogout() {
 }
 
 const menuItems = [
-  { icon: '🔔', label: '消息通知', action: () => uni.showToast({ title: '即将上线', icon: 'none' }) },
-  { icon: '💎', label: '会员中心', action: () => uni.showToast({ title: '即将上线', icon: 'none' }) },
-  { icon: '📞', label: '联系客服', action: () => uni.showToast({ title: '即将上线', icon: 'none' }) },
-  { icon: '📖', label: '关于我们', action: () => uni.showToast({ title: '即将上线', icon: 'none' }) },
+  { icon: '🔔', label: '消息通知', action: () => uni.showToast({ title: '消息功能开发中', icon: 'none' }) },
+  { icon: '💎', label: '会员中心', action: () => uni.navigateTo({ url: '/pages/membership/index' }) },
+  { icon: '📞', label: '联系客服', action: () => uni.makePhoneCall({ phoneNumber: '400-123-4567' }) },
+  { icon: '📖', label: '关于我们', action: () => showAboutModal() },
 ]
+
+function showAboutModal() {
+  uni.showModal({
+    title: '关于我们',
+    content: '专注星球 v1.0.0\n\n一款面向4-12岁儿童的专注力训练应用。\n\n每天10分钟，专注伴成长！',
+    showCancel: false,
+    confirmText: '知道了'
+  })
+}
 </script>
 
 <template>
