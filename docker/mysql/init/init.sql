@@ -408,3 +408,19 @@ CREATE TABLE IF NOT EXISTS `class_student` (
   UNIQUE KEY uk_class_child (`class_id`, `child_id`),
   INDEX idx_child_id (`child_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='班级学生表';
+
+-- ============================================================
+-- 家长儿童关联表 (补充)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `parent_child` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT UNSIGNED NOT NULL COMMENT '家长ID',
+  `child_id` INT UNSIGNED NOT NULL COMMENT '儿童ID',
+  `relation` VARCHAR(32) DEFAULT 'parent' COMMENT '关系: parent, guardian',
+  `is_default` TINYINT DEFAULT 0 COMMENT '是否默认: 0-否, 1-是',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`child_id`) REFERENCES `child`(`id`) ON DELETE CASCADE,
+  UNIQUE KEY uk_user_child (`user_id`, `child_id`),
+  INDEX idx_child_id (`child_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='家长儿童关联表';
