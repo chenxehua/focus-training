@@ -35,8 +35,8 @@ export class ChildModel {
     }
   ): Promise<number> {
     const result = await execute(
-      'INSERT INTO child (name, age, gender, age_group, avatar, level, experience) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [data.name, data.age, data.gender, data.ageGroup, data.avatar ?? null, 1, 0]
+      'INSERT INTO child (user_id, name, age, gender, age_group, avatar, level, experience) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [userId, data.name, data.age, data.gender, data.ageGroup, data.avatar ?? null, 1, 0]
     )
     const childId = result.insertId
 

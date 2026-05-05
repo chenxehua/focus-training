@@ -18,7 +18,7 @@ export class PaymentController {
   static async createOrder(req: AuthRequest, res: Response) {
     try {
       const userId = req.userId
-      const { product_type, product_id, product_name, amount, child_id } = req.body
+      const { membership_id, amount, months } = req.body
 
       if (!userId) {
         return res.status(401).json({
@@ -34,10 +34,7 @@ export class PaymentController {
       await OrderModel.create({
         order_no: orderNo,
         user_id: userId,
-        child_id: child_id || undefined,
-        product_type: product_type || 'membership',
-        product_id: product_id || 'yearly_basic',
-        product_name: product_name || '年度会员',
+        membership_id: membership_id || undefined,
         amount: amount || 199
       })
 

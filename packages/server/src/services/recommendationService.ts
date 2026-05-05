@@ -402,16 +402,12 @@ export class RecommendationService {
     return numbers.reduce((sum, n) => sum + Math.pow(n - avg, 2), 0) / numbers.length
   }
 
-  private static getGameAgeRange(game: { target_age_group: string }): { minAge: number; maxAge: number } {
-    // 解析 target_age_group: '4-6', '7-9', '10-12'
-    const parts = game.target_age_group.split('-')
-    if (parts.length === 2) {
-      return {
-        minAge: parseInt(parts[0]),
-        maxAge: parseInt(parts[1])
-      }
+  private static getGameAgeRange(game: { min_age?: number; max_age?: number }): { minAge: number; maxAge: number } {
+    // 解析 min_age / max_age
+    return {
+      minAge: game.min_age ?? 4,
+      maxAge: game.max_age ?? 12
     }
-    return { minAge: 4, maxAge: 12 }
   }
 }
 

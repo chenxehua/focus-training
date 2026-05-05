@@ -156,6 +156,77 @@ export class ReportController {
   }
 
   /**
+   * 获取月报
+   * GET /api/report/monthly/:childId
+   */
+  static async getMonthlyReport(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.userId!
+      const childId = parseInt(req.params['childId'] ?? '0', 10)
+
+      const isOwned = await ChildModel.isOwnedByUser(childId, userId)
+      if (!isOwned) {
+        throw new AppError('无权查看该孩子报告', 403)
+      }
+
+      const now = new Date()
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+
+      const [dailyStats, gameBreakdown] = await Promise.all([
+        FocusReportModel.getMonthlyStats(childId, monthStart),
+        FocusReportModel.getGameBreakdownForMonth(childId, monthStart),
+      ])
+
+      const totalTrainingCount = dailyStats.reduce((s, d) => s + d.training_count, 0)
+      const totalDuration = dailyStats.reduce((s, d) => s + d.total_duration, 0)
+      const avgFocusScore =
+        dailyStats.length > 0
+          ? Math.round(dailyStats.reduce((s, d) => s + d.avg_focus_score, 0) / dailyStats.length)
+          : 0
+
+      const highlights: Array<{ type: string; title: string; description: string; value: number }> = []
+
+      if (totalTrainingCount >= 20) {
+        highlights.push({
+          type: 'consistency',
+          title: '月度训练达人',
+          description: `本月完成了 ${totalTrainingCount} 次训练`,
+          value: totalTrainingCount,
+        })
+      }
+      if (avgFocusScore >= 80) {
+        highlights.push({
+          type: 'focus',
+          title: '专注之星',
+          description: `本月平均专注分达到 ${avgFocusScore} 分`,
+          value: avgFocusScore,
+        })
+      }
+
+      res.json(
+        successResponse({
+          childId,
+          reportDate: monthStart,
+          month: now.toISOString().slice(0, 7),
+          trainingCount: totalTrainingCount,
+          totalDuration,
+          avgFocusScore,
+          dailyStats,
+          highlights,
+          gameBreakdown: gameBreakdown.map(g => ({
+            gameCode: g.game_code,
+            gameName: g.game_name,
+            count: g.count,
+            avgScore: g.avg_score,
+          })),
+        })
+      )
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  /**
    * 获取报告列表
    * GET /api/report/list
    */

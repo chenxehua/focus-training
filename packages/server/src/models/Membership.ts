@@ -160,20 +160,30 @@ export class OrderModel {
   /**
    * 创建订单
    */
-  static async create(data: OrderData): Promise<number> {
+  static async create(data: {
+    order_no: string
+    user_id: number
+    child_id?: number
+    membership_id?: number
+    amount: number
+    status?: 'pending' | 'paid' | 'cancelled' | 'refunded'
+    pay_method?: string
+    pay_time?: Date | null
+    transaction_id?: string
+    ext_data?: Record<string, unknown>
+  }): Promise<number> {
     const result = await execute(
-      'INSERT INTO `order` (order_no, user_id, child_id, product_type, product_id, product_name, amount, pay_amount, pay_channel, pay_status, ext_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO `order` (order_no, user_id, child_id, membership_id, amount, status, pay_method, pay_time, transaction_id, ext_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         data.order_no,
         data.user_id,
         data.child_id ?? null,
-        data.product_type,
-        data.product_id,
-        data.product_name,
+        data.membership_id ?? null,
         data.amount,
-        data.pay_amount ?? data.amount,
-        data.pay_channel ?? null,
-        data.pay_status ?? 0,
+        data.status ?? 'pending',
+        data.pay_method ?? null,
+        data.pay_time ?? null,
+        data.transaction_id ?? null,
         JSON.stringify(data.ext_data ?? {})
       ]
     )

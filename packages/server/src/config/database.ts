@@ -60,7 +60,9 @@ export async function query<T = Record<string, unknown>>(
   sql: string,
   values?: QueryValues
 ): Promise<T[]> {
-  const [rows] = await pool.execute(sql, values)
+  // Use pool.query() instead of pool.execute() for better compatibility
+  // with LIMIT/OFFSET placeholders in MySQL prepared statements
+  const [rows] = await pool.query(sql, values)
   return rows as T[]
 }
 

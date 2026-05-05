@@ -43,18 +43,18 @@ router.post('/generate', authMiddleware, ReportController.generateReport)
  * GET /api/assessment/child/:childId/dimensions
  * 获取儿童7维度评估数据（需登录）
  */
-router.get('/assessment/child/:childId/dimensions', authMiddleware, AssessmentController.getDimensionScores)
+router.get('/child/:childId/dimensions', authMiddleware, AssessmentController.getDimensionScores)
 
 /**
  * GET /api/assessment/child/:childId/trend
  * 获取能力趋势数据（需登录）
  */
-router.get('/assessment/child/:childId/trend', authMiddleware, AssessmentController.getAbilityTrend)
+router.get('/child/:childId/trend', authMiddleware, AssessmentController.getAbilityTrend)
 
 /**
  * GET /api/assessment/child/:childId/summary
  * 获取能力综合摘要（需登录）
  */
-router.get('/assessment/child/:childId/summary', authMiddleware, AssessmentController.getAbilitySummary)
+router.get('/child/:childId/summary', authMiddleware, AssessmentController.getAbilitySummary)
 
 export default router

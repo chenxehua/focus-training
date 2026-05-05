@@ -18,4 +18,10 @@ router.get('/today/:childId', ReportController.getTodayData)
  */
 router.get('/weekly/:childId', ReportController.getWeeklyReport)
 
+/**
+ * GET /api/report/monthly/:childId
+ * 获取本月训练报告
+ */
+router.get('/monthly/:childId', ReportController.getMonthlyReport)
+
 export default router
