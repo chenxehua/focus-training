@@ -155,7 +155,7 @@ async function finishGame() {
         childId: userStore.currentChild.id,
         gameId: 4, // G004 图形记忆
         durationSeconds: Math.max(1, elapsedSeconds.value),
-        accuracy: Math.round((correctCount.value / currentConfig.value.count) * 100),
+        accuracy: (Math.round((correctCount.value / currentConfig.value.count) * 100)) / 100,
         score,
         focusScore,
         difficultyLevel: difficulty.value,

@@ -22,12 +22,13 @@ const userStore = useUserStore()
 const gameStore = useGameStore()
 const timerRef = ref<InstanceType<typeof GameTimer> | null>(null)
 
-// 音频上下文
-let audioContext: AudioContext | null = null
+// 音频上下文 - 使用 uni InnerAudioContext
+let audioContext: any = null
 
 onMounted(() => {
-  if (typeof window !== 'undefined') {
-    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+  if (typeof uni !== 'undefined' && !audioContext) {
+    audioContext = uni.createInnerAudioContext()
+    audioContext.obeyMuteSwitch = false
   }
 })
 
@@ -125,59 +126,20 @@ function getCurrentQuestion(): Question | null {
 }
 
 // 播放音效 - 使用不同音调
-function playDigitTone(digit: number) {
-  if (!audioContext) return
-  
-  const oscillator = audioContext.createOscillator()
-  const gainNode = audioContext.createGain()
-  
-  oscillator.connect(gainNode)
-  gainNode.connect(audioContext.destination)
-  
-  // 不同数字对应不同频率 (C大调音阶)
-  const frequencies: Record<number, number> = {
-    1: 262, // C
-    2: 294, // D
-    3: 330, // E
-    4: 349, // F
-    5: 392, // G
-    6: 440, // A
-    7: 494, // B
-    8: 523, // C+
-    9: 587, // D+
-  }
-  
-  oscillator.frequency.value = frequencies[digit] || 400
-  oscillator.type = 'sine'
-  
-  gainNode.gain.setValueAtTime(0.4, audioContext.currentTime)
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2)
-  
-  oscillator.start()
-  oscillator.stop(audioContext.currentTime + 0.2)
+// 注意：uni InnerAudioContext无法生成音效，音效播放需要预置音频文件
+function playDigitTone(_digit: number) {
+  // 小程序不支持Web Audio API的Oscillator生成音调
+  // 游戏仍可正常进行，听觉记忆训练主要依赖视觉提示
 }
 
-// 播放背景噪音
+// 播放背景噪音 - uni InnerAudioContext不支持生成噪音
 function playBackgroundNoise() {
-  if (!audioContext) return
-  
-  const bufferSize = audioContext.sampleRate * 0.3
-  const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate)
-  const data = buffer.getChannelData(0)
-  
-  for (let i = 0; i < bufferSize; i++) {
-    data[i] = (Math.random() * 2 - 1) * 0.05 // 低音量白噪音
-  }
-  
-  const source = audioContext.createBufferSource()
-  source.buffer = buffer
-  source.connect(audioContext.destination)
-  source.start()
+  // 小程序不支持Web Audio API的噪音生成
 }
 
 async function playSequence() {
   const question = getCurrentQuestion()
-  if (!question || !audioContext) return
+  if (!question) return
   
   isPlaying.value = true
   detectiveState.value = 'listening'
@@ -359,7 +321,7 @@ async function finishGame() {
         childId: userStore.currentChild.id,
         gameId: 6, // G006 听觉记忆
         durationSeconds: elapsedSeconds.value,
-        accuracy: Math.round((correctCount.value / questions.value.length) * 100),
+        accuracy: (Math.round((correctCount.value / questions.value.length) * 100)) / 100),
         score: resultScore.value,
         focusScore: resultScore.value,
         difficultyLevel: difficulty.value,
@@ -429,7 +391,7 @@ function getModeLabel(mode: GameMode): string {
 onUnmounted(() => {
   timerRef.value?.stop()
   if (audioContext) {
-    audioContext.close()
+    audioContext.destroy()
   }
 })
 </script>

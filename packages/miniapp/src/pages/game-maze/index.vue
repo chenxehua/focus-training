@@ -288,7 +288,7 @@ async function finishGame() {
         childId: userStore.currentChild.id,
         gameId: 7, // G007 迷宫寻路
         durationSeconds: elapsedSeconds.value,
-        accuracy: Math.round((bestPath.value.length / steps.value) * 100),
+        accuracy: (Math.round((bestPath.value.length / steps.value) * 100)) / 100,
         score: resultScore.value,
         focusScore: resultScore.value,
         difficultyLevel: difficulty.value,

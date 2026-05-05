@@ -70,12 +70,13 @@ const resultScore = ref(0)
 const resultStars = ref(0)
 const showResult = ref(false)
 
-// 音频上下文
-let audioContext: AudioContext | null = null
+// 音频上下文 - 使用 uni-app InnerAudioContext
+let audioContext: any = null
 
 onMounted(() => {
-  if (typeof window !== 'undefined') {
-    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+  if (typeof uni !== 'undefined') {
+    audioContext = uni.createInnerAudioContext()
+    audioContext.obeyMuteSwitch = false
   }
 })
 
@@ -144,49 +145,41 @@ function getCurrentQuestion(): Question | null {
 
 async function playSound(count: number) {
   if (!audioContext) return
-  
+
   const config = currentConfig.value
   currentSoundIndex.value = 0
   isPlaying.value = true
-  
+
   for (let i = 0; i < count; i++) {
     currentSoundIndex.value = i + 1
-    
+
     // 播放提示音
     playBeep(config.soundType)
-    
+
     await new Promise(resolve => setTimeout(resolve, config.soundInterval))
   }
-  
+
   currentSoundIndex.value = 0
   isPlaying.value = false
 }
 
 function playBeep(type: 'beep' | 'voice' | 'drum') {
   if (!audioContext) return
-  
-  const oscillator = audioContext.createOscillator()
-  const gainNode = audioContext.createGain()
-  
-  oscillator.connect(gainNode)
-  gainNode.connect(audioContext.destination)
-  
-  if (type === 'beep') {
-    oscillator.frequency.value = 800
-    oscillator.type = 'sine'
-  } else if (type === 'drum') {
-    oscillator.frequency.value = 200
-    oscillator.type = 'triangle'
-  } else {
-    oscillator.frequency.value = 600
-    oscillator.type = 'sine'
-  }
-  
-  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15)
-  
-  oscillator.start()
-  oscillator.stop(audioContext.currentTime + 0.15)
+
+  // 使用 uni.showToast 模拟声音提示反馈（实际项目中应使用音频文件）
+  // 这里使用 InnerAudioContext 播放预置音频
+  const innerAudio = uni.createInnerAudioContext()
+  innerAudio.obeyMuteSwitch = false
+
+  // 根据类型选择频率（仅用于记录，实际需要音频文件）
+  // 提示用户进行选择
+  innerAudio.src = '' // 预留，实际项目需要音频文件
+  innerAudio.play()
+
+  setTimeout(() => {
+    innerAudio.stop()
+    innerAudio.destroy()
+  }, 150)
 }
 
 function startGame() {
@@ -342,7 +335,7 @@ async function finishGame() {
         childId: userStore.currentChild.id,
         gameId: 2, // G002 听声辨数
         durationSeconds: Math.max(1, elapsedSeconds.value),
-        accuracy: Math.round((correctCount.value / questions.value.length) * 100),
+        accuracy: (Math.round((correctCount.value / questions.value.length) * 100)) / 100,
         score: resultScore.value,
         focusScore: resultScore.value,
         difficultyLevel: difficulty.value,

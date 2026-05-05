@@ -1003,3 +1003,527 @@ export async function getRetentionAnalytics(req: AdminRequest, res: Response) {
     res.status(500).json(errorResponse('获取留存分析失败'))
   }
 }
+
+// ============================================================
+// 训练记录管理
+// ============================================================
+
+/**
+ * 获取训练记录列表
+ * GET /api/admin/training/records
+ */
+export async function getTrainingRecords(req: AdminRequest, res: Response) {
+  try {
+    const page = parseInt(req.query.page as string) || 1
+    const pageSize = parseInt(req.query.pageSize as string) || 20
+    const childId = req.query.childId as string
+    const gameId = req.query.gameId as string
+    const startDate = req.query.startDate as string
+    const endDate = req.query.endDate as string
+    
+    let whereClause = 'WHERE 1=1'
+    const params: any[] = []
+    
+    if (childId) {
+      whereClause += ' AND tr.child_id = ?'
+      params.push(parseInt(childId))
+    }
+    
+    if (gameId) {
+      whereClause += ' AND tr.game_id = ?'
+      params.push(parseInt(gameId))
+    }
+    
+    if (startDate) {
+      whereClause += ' AND tr.created_at >= ?'
+      params.push(startDate)
+    }
+    
+    if (endDate) {
+      whereClause += ' AND tr.created_at <= ?'
+      params.push(endDate + ' 23:59:59')
+    }
+    
+    const countSql = `SELECT COUNT(*) as total FROM training_record tr ${whereClause}`
+    const countResult = await queryOne<{ total: number }>(countSql, params)
+    
+    const offset = (page - 1) * pageSize
+    const listSql = `
+      SELECT tr.*, c.name as child_name, g.game_name, g.game_code
+      FROM training_record tr
+      LEFT JOIN child c ON tr.child_id = c.id
+      LEFT JOIN game g ON tr.game_id = g.id
+      ${whereClause}
+      ORDER BY tr.created_at DESC
+      LIMIT ${pageSize} OFFSET ${offset}
+    `
+    const list = await query(listSql, params)
+    
+    res.json(successResponse({
+      list,
+      total: countResult?.total ?? 0,
+      page,
+      pageSize
+    }))
+  } catch (error) {
+    console.error('获取训练记录失败:', error)
+    res.status(500).json(errorResponse('获取训练记录失败'))
+  }
+}
+
+/**
+ * 获取指定儿童的训练记录
+ * GET /api/admin/training/child/:childId
+ */
+export async function getChildTrainingRecords(req: AdminRequest, res: Response) {
+  try {
+    const childId = parseInt(req.params.childId)
+    const page = parseInt(req.query.page as string) || 1
+    const pageSize = parseInt(req.query.pageSize as string) || 20
+    
+    // 检查儿童是否存在
+    const childSql = 'SELECT * FROM child WHERE id = ? AND status = 1'
+    const child = await queryOne<any>(childSql, [childId])
+    
+    if (!child) {
+      return res.status(404).json(errorResponse('儿童不存在'))
+    }
+    
+    const countSql = 'SELECT COUNT(*) as total FROM training_record WHERE child_id = ?'
+    const countResult = await queryOne<{ total: number }>(countSql, [childId])
+    
+    const offset = (page - 1) * pageSize
+    const listSql = `
+      SELECT tr.*, g.game_name, g.game_code
+      FROM training_record tr
+      LEFT JOIN game g ON tr.game_id = g.id
+      WHERE tr.child_id = ?
+      ORDER BY tr.created_at DESC
+      LIMIT ${pageSize} OFFSET ${offset}
+    `
+    const list = await query(listSql, [childId])
+    
+    res.json(successResponse({
+      list,
+      total: countResult?.total ?? 0,
+      page,
+      pageSize,
+      child
+    }))
+  } catch (error) {
+    console.error('获取儿童训练记录失败:', error)
+    res.status(500).json(errorResponse('获取儿童训练记录失败'))
+  }
+}
+
+/**
+ * 获取训练记录详情
+ * GET /api/admin/training/records/:id
+ */
+export async function getTrainingRecordDetail(req: AdminRequest, res: Response) {
+  try {
+    const recordId = parseInt(req.params.id)
+    
+    const sql = `
+      SELECT tr.*, c.name as child_name, c.age as child_age, c.age_group,
+             g.game_name, g.game_code, g.description as game_description
+      FROM training_record tr
+      LEFT JOIN child c ON tr.child_id = c.id
+      LEFT JOIN game g ON tr.game_id = g.id
+      WHERE tr.id = ?
+    `
+    const record = await queryOne(sql, [recordId])
+    
+    if (!record) {
+      return res.status(404).json(errorResponse('训练记录不存在'))
+    }
+    
+    res.json(successResponse(record))
+  } catch (error) {
+    console.error('获取训练记录详情失败:', error)
+    res.status(500).json(errorResponse('获取训练记录详情失败'))
+  }
+}
+
+/**
+ * 获取今日训练数据
+ * GET /api/admin/training/today
+ */
+export async function getTodayTraining(req: AdminRequest, res: Response) {
+  try {
+    // 今日统计
+    const todayStatsSql = `
+      SELECT 
+        COUNT(*) as total_records,
+        COUNT(DISTINCT child_id) as total_children,
+        COALESCE(SUM(duration_seconds), 0) as total_duration,
+        AVG(accuracy) as avg_accuracy,
+        AVG(focus_score) as avg_focus_score
+      FROM training_record
+      WHERE DATE(created_at) = CURDATE()
+    `
+    const todayStats = await queryOne<any>(todayStatsSql)
+    
+    // 今日热门游戏
+    const topGamesSql = `
+      SELECT g.game_name, COUNT(*) as count
+      FROM training_record tr
+      JOIN game g ON tr.game_id = g.id
+      WHERE DATE(tr.created_at) = CURDATE()
+      GROUP BY g.id, g.game_name
+      ORDER BY count DESC
+      LIMIT 5
+    `
+    const topGames = await query<{ game_name: string; count: number }>(topGamesSql)
+    
+    // 今日最新训练记录
+    const todayRecordsSql = `
+      SELECT tr.*, c.name as child_name, g.game_name, g.game_code
+      FROM training_record tr
+      LEFT JOIN child c ON tr.child_id = c.id
+      LEFT JOIN game g ON tr.game_id = g.id
+      WHERE DATE(tr.created_at) = CURDATE()
+      ORDER BY tr.created_at DESC
+      LIMIT 20
+    `
+    const records = await query(todayRecordsSql)
+    
+    res.json(successResponse({
+      date: new Date().toISOString().split('T')[0],
+      total_records: todayStats?.total_records ?? 0,
+      total_children: todayStats?.total_children ?? 0,
+      total_duration: todayStats?.total_duration ?? 0,
+      avg_accuracy: todayStats?.avg_accuracy ?? 0,
+      avg_focus_score: todayStats?.avg_focus_score ?? 0,
+      top_games: topGames,
+      records
+    }))
+  } catch (error) {
+    console.error('获取今日训练数据失败:', error)
+    res.status(500).json(errorResponse('获取今日训练数据失败'))
+  }
+}
+
+// ============================================================
+// 评估报告
+// ============================================================
+
+/**
+ * 获取儿童评估报告
+ * GET /api/admin/assessment/child/:childId
+ */
+export async function getChildAssessmentReport(req: AdminRequest, res: Response) {
+  try {
+    const childId = parseInt(req.params.childId)
+    
+    // 获取儿童信息
+    const childSql = 'SELECT * FROM child WHERE id = ? AND status = 1'
+    const child = await queryOne<any>(childSql, [childId])
+    
+    if (!child) {
+      return res.status(404).json(errorResponse('儿童不存在'))
+    }
+    
+    // 获取训练历史统计
+    const historySql = `
+      SELECT 
+        COUNT(*) as total_sessions,
+        COALESCE(SUM(duration_seconds), 0) as total_duration,
+        AVG(accuracy) as avg_accuracy,
+        MIN(accuracy) as min_accuracy,
+        MAX(accuracy) as max_accuracy
+      FROM training_record
+      WHERE child_id = ?
+    `
+    const history = await queryOne<any>(historySql, [childId])
+    
+    // 计算进步率 (最近10次 vs 最早10次)
+    const improvementSql = `
+      SELECT 
+        (SELECT AVG(accuracy) FROM (
+          SELECT accuracy FROM training_record WHERE child_id = ?
+          ORDER BY created_at ASC LIMIT 10
+        ) as early) as early_avg,
+        (SELECT AVG(accuracy) FROM (
+          SELECT accuracy FROM training_record WHERE child_id = ?
+          ORDER BY created_at DESC LIMIT 10
+        ) as recent) as recent_avg
+    `
+    const improvement = await queryOne<{ early_avg: number; recent_avg: number }>(improvementSql, [childId, childId])
+    
+    const improvementRate = improvement?.early_avg 
+      ? ((improvement.recent_avg - improvement.early_avg) / improvement.early_avg * 100).toFixed(1)
+      : 0
+    
+    // 获取各游戏表现
+    const gamePerformanceSql = `
+      SELECT g.game_name, g.game_code,
+             COUNT(*) as play_count,
+             AVG(tr.score) as avg_score,
+             AVG(tr.accuracy) as avg_accuracy
+      FROM training_record tr
+      JOIN game g ON tr.game_id = g.id
+      WHERE tr.child_id = ?
+      GROUP BY g.id, g.game_name, g.game_code
+      ORDER BY play_count DESC
+    `
+    const gamePerformance = await query(gamePerformanceSql, [childId])
+    
+    // 7维度评估 (基于训练数据计算)
+    const dimensions = calculateDimensions(childId, history, gamePerformance)
+    
+    // 计算综合得分
+    const overallScore = dimensions.reduce((sum, d) => sum + d.score, 0) / dimensions.length
+    const overallLevel = getLevelFromScore(overallScore)
+    
+    // 生成建议
+    const recommendations = generateRecommendations(dimensions, gamePerformance)
+    
+    res.json(successResponse({
+      child_id: child.id,
+      child_name: child.name,
+      age: child.age,
+      age_group: child.age_group,
+      generated_at: new Date().toISOString(),
+      dimensions,
+      overall_score: Math.round(overallScore * 100) / 100,
+      overall_level: overallLevel,
+      recommendations,
+      training_history: {
+        total_sessions: history?.total_sessions ?? 0,
+        total_duration: history?.total_duration ?? 0,
+        avg_accuracy: history?.avg_accuracy ?? 0,
+        improvement_rate: parseFloat(improvementRate as string)
+      },
+      game_performance: gamePerformance
+    }))
+  } catch (error) {
+    console.error('获取评估报告失败:', error)
+    res.status(500).json(errorResponse('获取评估报告失败'))
+  }
+}
+
+/**
+ * 获取评估报告列表
+ * GET /api/admin/assessment/list
+ */
+export async function getAssessmentReportList(req: AdminRequest, res: Response) {
+  try {
+    const page = parseInt(req.query.page as string) || 1
+    const pageSize = parseInt(req.query.pageSize as string) || 20
+    const childId = req.query.childId as string
+    
+    let whereClause = 'WHERE c.status = 1'
+    const params: any[] = []
+    
+    if (childId) {
+      whereClause += ' AND c.id = ?'
+      params.push(parseInt(childId))
+    }
+    
+    // 获取有训练记录的儿童
+    const countSql = `
+      SELECT COUNT(DISTINCT c.id) as total 
+      FROM child c
+      INNER JOIN training_record tr ON c.id = tr.child_id
+      ${whereClause}
+    `
+    const countResult = await queryOne<{ total: number }>(countSql, params)
+    
+    const offset = (page - 1) * pageSize
+    const listSql = `
+      SELECT c.id as child_id, c.name as child_name, c.age, c.age_group,
+             COUNT(tr.id) as total_sessions,
+             AVG(tr.accuracy) as avg_accuracy,
+             AVG(tr.focus_score) as avg_focus_score,
+             MAX(tr.created_at) as last_training_at
+      FROM child c
+      LEFT JOIN training_record tr ON c.id = tr.child_id
+      ${whereClause}
+      GROUP BY c.id, c.name, c.age, c.age_group
+      HAVING total_sessions > 0
+      ORDER BY last_training_at DESC
+      LIMIT ${pageSize} OFFSET ${offset}
+    `
+    const list = await query(listSql, params)
+    
+    res.json(successResponse({
+      list,
+      total: countResult?.total ?? 0,
+      page,
+      pageSize
+    }))
+  } catch (error) {
+    console.error('获取评估报告列表失败:', error)
+    res.status(500).json(errorResponse('获取评估报告列表失败'))
+  }
+}
+
+// ============================================================
+// 辅助函数
+// ============================================================
+
+interface Dimension {
+  name: string
+  score: number
+  level: string
+  description: string
+}
+
+function calculateDimensions(childId: number, history: any, gamePerformance: any[]): Dimension[] {
+  // 基于游戏类型映射到7个维度
+  const dimensionMapping: Record<string, string[]> = {
+    '视觉搜索': ['visual_search', 'sustained_attention'],
+    '舒尔特': ['visual_search', 'sustained_attention'],
+    '听觉': ['auditory_attention', 'working_memory'],
+    '听声': ['auditory_attention', 'auditory_memory'],
+    '记忆': ['visual_memory', 'working_memory'],
+    '图案': ['visual_memory', 'selective_attention'],
+    '视觉': ['visual_tracking', 'selective_attention'],
+    '追踪': ['visual_tracking', 'selective_attention'],
+    '节奏': ['rhythm_perception', 'sustained_attention'],
+    '迷宫': ['spatial_cognition', 'problem_solving'],
+    '排序': ['working_memory', 'problem_solving'],
+    '反应': ['response_speed', 'selective_attention']
+  }
+  
+  // 初始化维度得分
+  const dimensions: Record<string, { scores: number[]; count: number }> = {
+    '视觉搜索': { scores: [], count: 0 },
+    '听觉注意': { scores: [], count: 0 },
+    '视觉记忆': { scores: [], count: 0 },
+    '听觉记忆': { scores: [], count: 0 },
+    '视觉追踪': { scores: [], count: 0 },
+    '工作记忆': { scores: [], count: 0 },
+    '注意力': { scores: [], count: 0 }
+  }
+  
+  // 映射游戏表现到维度
+  gamePerformance.forEach((game: any) => {
+    const gameName = game.game_name || ''
+    const accuracy = game.avg_accuracy || 0
+    const mappedDimensions = Object.entries(dimensionMapping)
+      .filter(([key]) => gameName.includes(key))
+      .flatMap(([, dims]) => dims)
+    
+    if (mappedDimensions.length === 0) {
+      // 默认添加到注意力维度
+      dimensions['注意力'].scores.push(accuracy)
+      dimensions['注意力'].count++
+    } else {
+      mappedDimensions.forEach(dim => {
+        const dimName = getDimensionChineseName(dim)
+        if (dimensions[dimName]) {
+          dimensions[dimName].scores.push(accuracy)
+          dimensions[dimName].count++
+        }
+      })
+    }
+  })
+  
+  // 计算维度得分
+  const results: Dimension[] = []
+  Object.entries(dimensions).forEach(([name, data]) => {
+    if (data.count > 0) {
+      const avgScore = data.scores.reduce((a, b) => a + b, 0) / data.count
+      results.push({
+        name,
+        score: Math.round(avgScore * 100),
+        level: getLevelFromScore(avgScore * 100),
+        description: getDimensionDescription(name, avgScore * 100)
+      })
+    } else {
+      // 没有数据的维度给予默认值
+      results.push({
+        name,
+        score: 0,
+        level: '暂无数据',
+        description: '暂无训练数据'
+      })
+    }
+  })
+  
+  return results
+}
+
+function getDimensionChineseName(enName: string): string {
+  const mapping: Record<string, string> = {
+    'visual_search': '视觉搜索',
+    'sustained_attention': '注意力',
+    'auditory_attention': '听觉注意',
+    'auditory_memory': '听觉记忆',
+    'visual_memory': '视觉记忆',
+    'working_memory': '工作记忆',
+    'visual_tracking': '视觉追踪',
+    'selective_attention': '注意力',
+    'rhythm_perception': '注意力',
+    'spatial_cognition': '工作记忆',
+    'problem_solving': '工作记忆',
+    'response_speed': '注意力'
+  }
+  return mapping[enName] || '注意力'
+}
+
+function getLevelFromScore(score: number): string {
+  if (score >= 90) return '优秀'
+  if (score >= 80) return '良好'
+  if (score >= 70) return '中等'
+  if (score >= 60) return '及格'
+  return '需提升'
+}
+
+function getDimensionDescription(name: string, score: number): string {
+  if (score >= 90) {
+    return `${name}能力优秀，表现突出`
+  } else if (score >= 80) {
+    return `${name}能力良好，继续保持`
+  } else if (score >= 70) {
+    return `${name}能力中等，建议加强练习`
+  } else if (score >= 60) {
+    return `${name}能力及格，需要更多训练`
+  } else {
+    return `${name}能力需提升，建议多进行相关训练`
+  }
+}
+
+function generateRecommendations(dimensions: Dimension[], gamePerformance: any[]): string[] {
+  const recommendations: string[] = []
+  
+  // 找出得分最低的维度
+  const lowDimensions = dimensions
+    .filter(d => d.score < 70)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 2)
+  
+  lowDimensions.forEach(dim => {
+    if (dim.name === '视觉搜索') {
+      recommendations.push('建议多玩舒尔特方格等视觉搜索类游戏，提升视觉搜索能力')
+    } else if (dim.name === '听觉注意') {
+      recommendations.push('建议多玩听声辨数等听觉类游戏，训练听觉注意力')
+    } else if (dim.name === '视觉记忆') {
+      recommendations.push('建议多玩图案记忆等记忆类游戏，增强视觉记忆力')
+    } else if (dim.name === '听觉记忆') {
+      recommendations.push('建议多进行听觉记忆训练，提升听觉记忆能力')
+    } else if (dim.name === '视觉追踪') {
+      recommendations.push('建议多玩视觉追踪类游戏，训练眼球追踪能力')
+    } else if (dim.name === '工作记忆') {
+      recommendations.push('建议多玩快速排序等游戏，锻炼工作记忆能力')
+    } else if (dim.name === '注意力') {
+      recommendations.push('建议加强专注力训练，可尝试节奏点击等游戏')
+    }
+  })
+  
+  // 基于游戏表现给出建议
+  const lowGames = gamePerformance.filter(g => (g.avg_accuracy || 0) < 60).slice(0, 1)
+  lowGames.forEach(game => {
+    recommendations.push(`建议加强${game.game_name}游戏的练习，提高游戏表现`)
+  })
+  
+  // 如果表现都不错
+  if (recommendations.length === 0 && gamePerformance.length > 0) {
+    recommendations.push('整体表现优秀，建议保持当前的训练频率和游戏组合')
+    recommendations.push('可以尝试更多不同类型的游戏，全面提升各项能力')
+  }
+  
+  return recommendations.slice(0, 5)
+}

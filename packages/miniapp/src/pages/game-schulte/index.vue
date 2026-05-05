@@ -154,7 +154,7 @@ async function finishGame() {
         childId: userStore.currentChild.id,
         gameId: 1, // G001 舒尔特方格
         durationSeconds: Math.max(1, elapsed),
-        accuracy: Math.max(0, Math.min(100, accuracyValue)),
+        accuracy: accuracyValue / 100, // 转为 0-1 范围
         score,
         focusScore,
         difficultyLevel: difficulty.value,

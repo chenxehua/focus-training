@@ -176,7 +176,7 @@ async function submitRecord() {
       childId: userStore.currentChild.id,
       gameId: 5, // G005 反应速度
       durationSeconds: Math.round(currentConfig.value.rounds * 2),
-      accuracy: Math.round((totalCorrect.value / currentConfig.value.rounds) * 100),
+      accuracy: (Math.round((totalCorrect.value / currentConfig.value.rounds) * 100)) / 100,
       score: resultScore.value,
       focusScore: resultFocusScore.value,
       difficultyLevel: difficulty.value,

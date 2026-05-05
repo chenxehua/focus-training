@@ -26,7 +26,38 @@ export class AuthController {
         return
       }
 
-      // 用 code 换取 openid + session_key
+      // 测试模式: 以 test_ 开头的 code 直接创建测试用户
+      if (code.startsWith('test_')) {
+        const openid = `test_openid_${code.replace('test_', '')}`
+        
+        // 查找或创建测试用户
+        let user = await UserModel.findByOpenid(openid)
+        let isNew = false
+
+        if (!user) {
+          const userId = await UserModel.create({ openid })
+          user = await UserModel.findById(userId)
+          isNew = true
+        }
+
+        if (!user) {
+          throw new AppError('用户数据异常', 500)
+        }
+
+        // 生成 JWT
+        const token = generateToken(user.id)
+
+        res.json(
+          successResponse({
+            token,
+            userInfo: UserModel.toPublic(user),
+            isNew,
+          })
+        )
+        return
+      }
+
+      // 正式微信登录流程
       const wxRes = await axios.get<WxSessionResponse>(config.wx.loginUrl, {
         params: {
           appid: config.wx.appid,

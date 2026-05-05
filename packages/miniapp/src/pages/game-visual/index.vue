@@ -66,7 +66,7 @@ const showResult = ref<boolean>(false)
 const elapsedSeconds = ref<number>(0)
 
 // 动画帧
-let animationFrame: number | null = null
+let animationFrame: ReturnType<typeof setInterval> | null = null
 let interferenceTimer: ReturnType<typeof setTimeout> | null = null
 
 // 区域尺寸
@@ -124,11 +124,11 @@ function generateStars(): Star[] {
 
 function updateStarPositions() {
   if (gameStatus.value !== 'playing') return
-  
+
   stars.value.forEach(star => {
     star.x += star.vx
     star.y += star.vy
-    
+
     // 边界反弹
     if (star.x <= star.size || star.x >= areaWidth - star.size) {
       star.vx = -star.vx
@@ -138,14 +138,12 @@ function updateStarPositions() {
       star.vy = -star.vy
       star.y = Math.max(star.size, Math.min(areaHeight - star.size, star.y))
     }
-    
+
     // 闪烁状态恢复
     if (star.state === 'flickering' && Math.random() > 0.7) {
       star.state = 'normal'
     }
   })
-  
-  animationFrame = requestAnimationFrame(updateStarPositions)
 }
 
 function triggerInterference() {
@@ -227,8 +225,10 @@ function startGame() {
       elapsedSeconds.value += 1
     }, 1000)
 
-    // 启动星星移动
-    updateStarPositions()
+    // 启动星星移动 - 使用 setInterval 代替 requestAnimationFrame
+    animationFrame = setInterval(() => {
+      updateStarPositions()
+    }, 16) // ~60fps
 
     // 启动干扰系统
     setTimeout(triggerInterference, 2000)
@@ -267,7 +267,7 @@ function calculateScore(): { score: number; focusScore: number } {
 async function finishGame() {
   stopGameTimer()
 
-  if (animationFrame) cancelAnimationFrame(animationFrame)
+  if (animationFrame) clearInterval(animationFrame)
   if (interferenceTimer) clearTimeout(interferenceTimer)
 
   gameStatus.value = 'finished'
@@ -283,7 +283,7 @@ async function finishGame() {
         childId: userStore.currentChild.id,
         gameId: 4, // G004 视觉追踪
         durationSeconds: Math.max(1, elapsedSeconds.value),
-        accuracy: Math.round((reportedChanges.value / Math.max(1, totalChanges.value)) * 100),
+        accuracy: (Math.round((reportedChanges.value / Math.max(1, totalChanges.value)) * 100)) / 100,
         score,
         focusScore,
         difficultyLevel: difficulty.value,
@@ -307,7 +307,7 @@ async function finishGame() {
 }
 
 function resetGame() {
-  if (animationFrame) cancelAnimationFrame(animationFrame)
+  if (animationFrame) clearInterval(animationFrame)
   if (interferenceTimer) clearTimeout(interferenceTimer)
   stopGameTimer()
 

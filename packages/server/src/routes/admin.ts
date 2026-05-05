@@ -49,4 +49,14 @@ router.put('/games/:id', adminController.updateGame)
 router.get('/analytics/training', adminController.getTrainingAnalytics)
 router.get('/analytics/retention', adminController.getRetentionAnalytics)
 
+// 训练记录管理
+router.get('/training/records', adminController.getTrainingRecords)
+router.get('/training/child/:childId', adminController.getChildTrainingRecords)
+router.get('/training/records/:id', adminController.getTrainingRecordDetail)
+router.get('/training/today', adminController.getTodayTraining)
+
+// 评估报告
+router.get('/assessment/child/:childId', adminController.getChildAssessmentReport)
+router.get('/assessment/list', adminController.getAssessmentReportList)
+
 export default router

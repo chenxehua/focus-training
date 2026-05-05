@@ -82,6 +82,12 @@ export const useGameStore = defineStore('game', () => {
     gameList.value = list
   }
 
+  function clearAll() {
+    todayRecords.value = []
+    currentStreak.value = 0
+    totalTrainingCount.value = 0
+  }
+
   return {
     todayRecords,
     currentStreak,
@@ -95,5 +101,6 @@ export const useGameStore = defineStore('game', () => {
     fetchGameRecords,
     addTodayRecord,
     setGameList,
+    clearAll,
   }
 })

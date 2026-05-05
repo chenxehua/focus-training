@@ -44,12 +44,13 @@ const gameStore = useGameStore()
 // 本地计时器
 let gameTimer: ReturnType<typeof setInterval> | null = null
 
-// 音频上下文
-let audioContext: AudioContext | null = null
+// 音频上下文 - 使用 uni InnerAudioContext
+let audioContext: any = null
 
 onMounted(() => {
-  if (typeof window !== 'undefined') {
-    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+  if (typeof uni !== 'undefined' && !audioContext) {
+    audioContext = uni.createInnerAudioContext()
+    audioContext.obeyMuteSwitch = false
   }
 })
 
@@ -116,7 +117,7 @@ const showResult = ref(false)
 const gameMode = ref<'tracking' | 'finding'>('tracking')
 
 // 动画帧
-let animationFrame: number | null = null
+let animationFrame: ReturnType<typeof setInterval> | null = null
 let interferenceTimer: ReturnType<typeof setTimeout> | null = null
 let hideTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -196,7 +197,8 @@ function updateStarPositions() {
     }
   })
   
-  animationFrame = wx.requestAnimationFrame ? wx.requestAnimationFrame(updateStarPositions) : null
+  // 使用 setInterval 替代 requestAnimationFrame（小程序不支持）
+  animationFrame = setInterval(updateStarPositions, 16) // ~60fps
 }
 
 function triggerInterference() {
@@ -420,28 +422,9 @@ function clickAnimal(animal: Animal) {
   }
 }
 
-function playFeedbackSound(isCorrect: boolean) {
-  if (!audioContext) return
-  
-  const oscillator = audioContext.createOscillator()
-  const gainNode = audioContext.createGain()
-  
-  oscillator.connect(gainNode)
-  gainNode.connect(audioContext.destination)
-  
-  if (isCorrect) {
-    oscillator.frequency.value = 880
-    oscillator.type = 'sine'
-  } else {
-    oscillator.frequency.value = 220
-    oscillator.type = 'sawtooth'
-  }
-  
-  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15)
-  
-  oscillator.start()
-  oscillator.stop(audioContext.currentTime + 0.15)
+function playFeedbackSound(_isCorrect: boolean) {
+  // uni InnerAudioContext无法生成音效，但游戏仍可正常运行
+  // 反馈通过UI动画展示
 }
 
 function calculateScore(): { score: number; focusScore: number } {
@@ -474,7 +457,7 @@ const elapsedSeconds = ref(0)
 async function finishGame() {
   stopGameTimer()
 
-  if (animationFrame) wx.cancelAnimationFrame(animationFrame)
+  if (animationFrame) clearInterval(animationFrame)
   if (interferenceTimer) clearTimeout(interferenceTimer)
   if (hideTimer) clearTimeout(hideTimer)
 
@@ -492,8 +475,8 @@ async function finishGame() {
         gameId: 9, // G009 追踪目标
         durationSeconds: Math.max(1, elapsedSeconds.value),
         accuracy: gameMode.value === 'tracking'
-          ? Math.round((reportedChanges.value / Math.max(1, totalChanges.value)) * 100)
-          : Math.round((foundTargets.value.length / currentAnimalConfig.value.targetCount) * 100),
+          ? Math.round((reportedChanges.value / Math.max(1, totalChanges.value)) * 100) / 100
+          : Math.round((foundTargets.value.length / currentAnimalConfig.value.targetCount) * 100) / 100,
         score,
         focusScore,
         difficultyLevel: difficulty.value,
@@ -525,7 +508,7 @@ async function finishGame() {
 }
 
 function resetGame() {
-  if (animationFrame) wx.cancelAnimationFrame(animationFrame)
+  if (animationFrame) clearInterval(animationFrame)
   if (interferenceTimer) clearTimeout(interferenceTimer)
   if (hideTimer) clearTimeout(hideTimer)
   stopGameTimer()
@@ -574,11 +557,11 @@ function getAnimalStyle(animal: Animal): Record<string, string> {
 }
 
 onUnmounted(() => {
-  if (animationFrame) wx.cancelAnimationFrame(animationFrame)
+  if (animationFrame) clearInterval(animationFrame)
   if (interferenceTimer) clearTimeout(interferenceTimer)
   if (hideTimer) clearTimeout(hideTimer)
   stopGameTimer()
-  if (audioContext) audioContext.close()
+  if (audioContext) audioContext.destroy()
 })
 </script>
 

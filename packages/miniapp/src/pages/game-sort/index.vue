@@ -112,6 +112,7 @@ const ITEM_SIZE = 80 // rpx
 // 定时器
 let gameTimer: ReturnType<typeof setInterval> | null = null
 let dropTimer: ReturnType<typeof setInterval> | null = null
+let animationInterval: ReturnType<typeof setInterval> | null = null
 
 function initBaskets() {
   const config = currentConfig.value
@@ -350,7 +351,7 @@ async function finishGame() {
         childId: userStore.currentChild.id,
         gameId: 8, // G008 快速分类
         durationSeconds: elapsedSeconds.value,
-        accuracy: Math.round((correctCount.value / totalItems.value) * 100),
+        accuracy: (Math.round((correctCount.value / totalItems.value) * 100)) / 100,
         score: resultScore.value,
         focusScore: resultScore.value,
         difficultyLevel: difficulty.value,
@@ -389,13 +390,10 @@ function formatTime(seconds: number): string {
 }
 
 // 启动动画循环
-let animationFrame: number | null = null
 function startAnimation() {
-  function loop() {
+  animationInterval = setInterval(() => {
     updateItems()
-    animationFrame = requestAnimationFrame(loop)
-  }
-  loop()
+  }, 16)
 }
 
 // 启动
@@ -403,7 +401,7 @@ startAnimation()
 
 onUnmounted(() => {
   resetGame()
-  if (animationFrame) cancelAnimationFrame(animationFrame)
+  if (animationInterval) clearInterval(animationInterval)
 })
 </script>
 

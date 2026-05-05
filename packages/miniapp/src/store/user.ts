@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import { getUserInfo, getChildren } from '@/api/user'
+import { useGameStore } from './game'
 
 export interface UserInfo {
   id: number
@@ -91,6 +92,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function logout() {
+    const gameStore = useGameStore()
     token.value = ''
     userInfo.value = null
     currentChild.value = null
@@ -98,6 +100,8 @@ export const useUserStore = defineStore('user', () => {
     removeStorage(TOKEN_KEY)
     removeStorage(USER_KEY)
     removeStorage(CHILD_KEY)
+    // 清除游戏数据
+    gameStore.clearAll()
     uni.reLaunch({ url: '/pages/profile/index' })
   }
 

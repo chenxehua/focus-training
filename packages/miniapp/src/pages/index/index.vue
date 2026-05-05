@@ -54,7 +54,11 @@ function navigateToGames() {
 }
 
 async function loadData() {
-  if (!userStore.currentChild) return
+  // 未登录或无孩子时不加载数据
+  if (!userStore.currentChild || !userStore.isLoggedIn) {
+    gameStore.clearAll()
+    return
+  }
   isLoading.value = true
   try {
     const [gamesRes] = await Promise.all([
@@ -75,8 +79,12 @@ onMounted(() => {
 })
 
 onShow(() => {
-  if (userStore.currentChild) {
+  // 恢复session并根据登录状态加载数据
+  userStore.restoreSession()
+  if (userStore.currentChild && userStore.isLoggedIn) {
     gameStore.fetchTodayData(userStore.currentChild.id)
+  } else {
+    gameStore.clearAll()
   }
 })
 </script>
