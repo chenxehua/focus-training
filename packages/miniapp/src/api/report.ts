@@ -1,4 +1,4 @@
-import { get } from './request'
+import { get, post } from './request'
 
 export interface TodayData {
   records: Array<{
@@ -46,10 +46,54 @@ export interface WeeklyReport {
   }>
 }
 
+// 评估报告类型
+export interface FocusReport {
+  id: number
+  childId: number
+  reportType: 'daily' | 'weekly' | 'monthly'
+  overallScore: number
+  attentionScore: number
+  perceptionScore: number
+  memoryScore: number
+  reactionScore: number
+  meditationScore: number
+  observationScore: number
+  calculationScore: number
+  summary: string
+  suggestions: string
+  createdAt: string
+}
+
+// 报告列表项
+export interface ReportListItem {
+  id: number
+  childId: number
+  childName: string
+  reportType: 'daily' | 'weekly' | 'monthly'
+  overallScore: number
+  summary: string
+  createdAt: string
+}
+
 export function getTodayData(childId: number) {
   return get<TodayData>(`/api/report/today/${childId}`)
 }
 
 export function getWeeklyReport(childId: number) {
   return get<WeeklyReport>(`/api/report/weekly/${childId}`)
+}
+
+// 获取报告列表
+export function getReportList(params: { childId?: number; page?: number; pageSize?: number }) {
+  return get<{ list: ReportListItem[]; total: number }>('/api/report/list', params)
+}
+
+// 获取报告详情
+export function getReportDetail(reportId: number) {
+  return get<FocusReport>(`/api/report/${reportId}`)
+}
+
+// 生成报告
+export function generateReport(childId: number, reportType: 'daily' | 'weekly' = 'daily') {
+  return post<FocusReport>('/api/report/generate', { childId, reportType })
 }

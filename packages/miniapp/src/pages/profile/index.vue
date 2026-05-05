@@ -1,262 +1,342 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useUserStore } from '@/store/user'
-import { doWxLogin, getWxUserProfile } from '@/utils/auth'
-import { addChild } from '@/api/user'
-import { updateUserInfo } from '@/api/user'
-import type { Child } from '@/store/user'
+import { getWeeklyReport, getReportList, generateReport } from '@/api/report'
+import ProgressBar from '@/components/ProgressBar.vue'
+import type { WeeklyReport, ReportListItem } from '@/api/report'
 
 const userStore = useUserStore()
+const weeklyReport = ref<WeeklyReport | null>(null)
+const isLoading = ref(false)
+const reportList = ref<ReportListItem[]>([])
+const isGenerating = ref(false)
 
-const isLoggingIn = ref(false)
-const showAddChildModal = ref(false)
-const isSubmittingChild = ref(false)
+// Tab状态: 'weekly' | 'history'
+const activeTab = ref<'weekly' | 'history'>('weekly')
 
-const newChild = ref({
-  name: '',
-  age: 6,
-  gender: 'male' as 'male' | 'female',
-  ageGroup: '4-6' as '4-6' | '7-9' | '10-12',
+const selectedChildId = computed(() => userStore.currentChild?.id)
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const h = Math.floor(m / 60)
+  const remainM = m % 60
+  if (h > 0) return `${h}小时${remainM}分钟`
+  return `${m}分钟`
+}
+
+function getLevelLabel(score: number): string {
+  if (score >= 80) return '优秀'
+  if (score >= 60) return '良好'
+  if (score >= 40) return '一般'
+  return '需加强'
+}
+
+function getLevelColor(score: number): string {
+  if (score >= 80) return '#6BCB77'
+  if (score >= 60) return '#6C63FF'
+  if (score >= 40) return '#FFD93D'
+  return '#FF8A80'
+}
+
+const trendMax = computed(() => {
+  if (!weeklyReport.value) return 100
+  const scores = weeklyReport.value.trendData.map(d => d.focusScore)
+  return Math.max(...scores, 100)
 })
 
-function computeAgeGroup(age: number): '4-6' | '7-9' | '10-12' {
-  if (age <= 6) return '4-6'
-  if (age <= 9) return '7-9'
-  return '10-12'
-}
-
-async function handleLogin() {
-  if (isLoggingIn.value) return
-  isLoggingIn.value = true
+async function loadReport() {
+  if (!selectedChildId.value) return
+  isLoading.value = true
   try {
-    await doWxLogin()
-    await userStore.fetchChildren()
-    uni.showToast({ title: '登录成功', icon: 'success' })
+    const res = await getWeeklyReport(selectedChildId.value)
+    weeklyReport.value = res.data
   } catch (error) {
     console.error(error)
   } finally {
-    isLoggingIn.value = false
+    isLoading.value = false
   }
 }
 
-async function handleGetProfile() {
+async function loadReportList() {
+  if (!selectedChildId.value) return
+  isLoading.value = true
   try {
-    const profile = await getWxUserProfile()
-    await updateUserInfo({ nickname: profile.nickname, avatar: profile.avatar })
-    await userStore.fetchUserInfo()
-    uni.showToast({ title: '头像昵称已更新', icon: 'success' })
-  } catch (error) {
-    uni.showToast({ title: '获取信息失败', icon: 'none' })
-  }
-}
-
-function onAgeChange(e: { detail: { value: string } }) {
-  const age = Number(e.detail.value)
-  newChild.value.age = age
-  newChild.value.ageGroup = computeAgeGroup(age)
-}
-
-async function handleAddChild() {
-  if (!newChild.value.name.trim()) {
-    uni.showToast({ title: '请输入孩子姓名', icon: 'none' })
-    return
-  }
-  isSubmittingChild.value = true
-  try {
-    const res = await addChild({
-      name: newChild.value.name.trim(),
-      age: newChild.value.age,
-      gender: newChild.value.gender,
-      ageGroup: newChild.value.ageGroup,
-    })
-    await userStore.fetchChildren()
-    userStore.setCurrentChild(res.data)
-    showAddChildModal.value = false
-    newChild.value = { name: '', age: 6, gender: 'male', ageGroup: '4-6' }
-    uni.showToast({ title: '添加成功', icon: 'success' })
+    const res = await getReportList({ childId: selectedChildId.value, page: 1, pageSize: 20 })
+    reportList.value = res.data.list || []
   } catch (error) {
     console.error(error)
   } finally {
-    isSubmittingChild.value = false
+    isLoading.value = false
   }
 }
 
-function selectChild(child: Child) {
-  userStore.setCurrentChild(child)
-  uni.showToast({ title: `已切换到 ${child.name}`, icon: 'none' })
-}
+async function handleGenerateReport() {
+  if (!selectedChildId.value) return
 
-function handleLogout() {
   uni.showModal({
-    title: '确认退出',
-    content: '退出登录后需重新授权',
-    success(res: UniApp.ShowModalRes) {
+    title: '生成报告',
+    content: '确定要为孩子生成一份专注力评估报告吗？',
+    success: async (res) => {
       if (res.confirm) {
-        userStore.logout()
+        isGenerating.value = true
+        try {
+          await generateReport(selectedChildId.value, 'weekly')
+          uni.showToast({ title: '报告生成成功', icon: 'success' })
+          loadReportList()
+          loadReport()
+        } catch (error) {
+          console.error(error)
+          uni.showToast({ title: '生成失败', icon: 'none' })
+        } finally {
+          isGenerating.value = false
+        }
       }
-    },
+    }
   })
 }
 
-const menuItems = [
-  { icon: '🔔', label: '消息通知', action: () => uni.showToast({ title: '消息功能开发中', icon: 'none' }) },
-  { icon: '💎', label: '会员中心', action: () => uni.navigateTo({ url: '/pages/membership/index' }) },
-  { icon: '📞', label: '联系客服', action: () => uni.makePhoneCall({ phoneNumber: '400-123-4567' }) },
-  { icon: '📖', label: '关于我们', action: () => showAboutModal() },
-]
-
-function showAboutModal() {
-  uni.showModal({
-    title: '关于我们',
-    content: '专注星球 v1.0.0\n\n一款面向4-12岁儿童的专注力训练应用。\n\n每天10分钟，专注伴成长！',
-    showCancel: false,
-    confirmText: '知道了'
-  })
+function viewReportDetail(reportId: number) {
+  uni.navigateTo({ url: `/pages/report-detail/index?id=${reportId}` })
 }
+
+function formatReportDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function switchTab(tab: 'weekly' | 'history') {
+  activeTab.value = tab
+  if (tab === 'weekly') {
+    loadReport()
+  } else {
+    loadReportList()
+  }
+}
+
+function switchChild(childId: number) {
+  const child = userStore.children.find(c => c.id === childId)
+  if (child) {
+    userStore.setCurrentChild(child)
+    if (activeTab.value === 'weekly') {
+      loadReport()
+    } else {
+      loadReportList()
+    }
+  }
+}
+
+onMounted(() => {
+  if (!userStore.isLoggedIn) return
+  userStore.fetchChildren().then(() => {
+    if (activeTab.value === 'weekly') {
+      loadReport()
+    } else {
+      loadReportList()
+    }
+  })
+})
 </script>
 
 <template>
   <view class="page">
-    <!-- 用户信息卡 -->
-    <view class="user-card">
-      <view v-if="userStore.isLoggedIn" class="user-info">
-        <button class="avatar-btn" open-type="chooseAvatar" @tap="handleGetProfile">
-          <image
-            class="avatar"
-            :src="userStore.userInfo?.avatar || '/static/avatar-default.png'"
-            mode="aspectFill"
-          />
-        </button>
-        <view class="user-detail">
-          <text class="user-name">{{ userStore.userInfo?.nickname || '未设置昵称' }}</text>
-          <text class="user-phone">{{ userStore.userInfo?.phone || '未绑定手机' }}</text>
-        </view>
-      </view>
-
-      <view v-else class="login-prompt" @tap="handleLogin">
-        <image class="avatar-placeholder" src="/static/avatar-default.png" mode="aspectFill" />
-        <view class="login-text-wrap">
-          <text class="login-title" v-if="!isLoggingIn">点击登录</text>
-          <text class="login-title" v-else>登录中...</text>
-          <text class="login-hint">登录后查看完整数据</text>
-        </view>
-      </view>
+    <!-- 未登录 -->
+    <view v-if="!userStore.isLoggedIn" class="not-login">
+      <text class="not-login-icon">👨‍👩‍👧</text>
+      <text class="not-login-text">请先登录查看孩子的训练报告</text>
     </view>
 
-    <!-- 孩子管理 -->
-    <view v-if="userStore.isLoggedIn" class="section-card">
-      <view class="section-header">
-        <text class="section-title">孩子管理</text>
-        <view class="add-child-btn" @tap="showAddChildModal = true">
-          <text class="add-child-text">+ 添加</text>
-        </view>
-      </view>
-
-      <view v-if="userStore.children.length === 0" class="no-child">
-        <text class="no-child-text">还没有孩子信息，添加一个吧</text>
-      </view>
-
-      <view v-else class="children-list">
-        <view
-          v-for="child in userStore.children"
-          :key="child.id"
-          class="child-item"
-          :class="{ active: userStore.currentChild?.id === child.id }"
-          @tap="selectChild(child)"
-        >
-          <image
-            class="child-avatar"
-            :src="child.avatar || '/static/avatar-default.png'"
-            mode="aspectFill"
-          />
-          <view class="child-info">
-            <text class="child-name">{{ child.name }}</text>
-            <text class="child-meta">{{ child.age }}岁 · {{ child.gender === 'male' ? '男' : '女' }} · Lv.{{ child.level }}</text>
-          </view>
-          <view v-if="userStore.currentChild?.id === child.id" class="current-badge">
-            <text class="current-text">当前</text>
-          </view>
-        </view>
-      </view>
-    </view>
-
-    <!-- 功能菜单 -->
-    <view class="section-card">
-      <view
-        v-for="(item, index) in menuItems"
-        :key="index"
-        class="menu-item"
-        @tap="item.action"
-      >
-        <text class="menu-icon">{{ item.icon }}</text>
-        <text class="menu-label">{{ item.label }}</text>
-        <text class="menu-arrow">›</text>
-      </view>
-    </view>
-
-    <!-- 退出登录 -->
-    <view v-if="userStore.isLoggedIn" class="logout-btn" @tap="handleLogout">
-      <text class="logout-text">退出登录</text>
-    </view>
-
-    <text class="version-text">v1.0.0</text>
-
-    <!-- 添加孩子弹窗 -->
-    <view v-if="showAddChildModal" class="modal-overlay" @tap.self="showAddChildModal = false">
-      <view class="modal" @tap.stop="() => {}">
-        <text class="modal-title">添加孩子信息</text>
-
-        <view class="form-item">
-          <text class="form-label">姓名</text>
-          <input
-            class="form-input"
-            v-model="newChild.name"
-            placeholder="请输入孩子姓名"
-            maxlength="10"
-            @tap.stop="() => {}"
-          />
-        </view>
-
-        <view class="form-item">
-          <text class="form-label">年龄</text>
-          <view class="age-stepper">
-            <view class="stepper-btn" @tap.stop="newChild.age = Math.max(4, newChild.age - 1); newChild.ageGroup = computeAgeGroup(newChild.age)">-</view>
-            <text class="stepper-value">{{ newChild.age }}岁</text>
-            <view class="stepper-btn" @tap.stop="newChild.age = Math.min(12, newChild.age + 1); newChild.ageGroup = computeAgeGroup(newChild.age)">+</view>
-          </view>
-        </view>
-
-        <view class="form-item">
-          <text class="form-label">性别</text>
-          <view class="gender-select">
+    <template v-else>
+      <!-- 儿童切换 -->
+      <view v-if="userStore.children.length > 0" class="child-switch">
+        <scroll-view scroll-x class="child-scroll">
+          <view class="child-list">
             <view
-              class="gender-btn"
-              :class="{ active: newChild.gender === 'male' }"
-              @tap.stop="newChild.gender = 'male'"
-            >男孩</view>
-            <view
-              class="gender-btn"
-              :class="{ active: newChild.gender === 'female' }"
-              @tap.stop="newChild.gender = 'female'"
-            >女孩</view>
+              v-for="child in userStore.children"
+              :key="child.id"
+              class="child-tab"
+              :class="{ active: userStore.currentChild?.id === child.id }"
+              @tap="switchChild(child.id)"
+            >
+              <image class="child-tab-avatar" :src="child.avatar || '/static/avatar-default.png'" mode="aspectFill" />
+              <text class="child-tab-name">{{ child.name }}</text>
+            </view>
           </view>
-        </view>
-
-        <view class="form-item">
-          <text class="form-label">年龄段</text>
-          <text class="form-value">{{ newChild.ageGroup }} 岁（自动计算）</text>
-        </view>
-
-        <view class="modal-actions">
-          <view class="btn-outline modal-btn" @tap.stop="showAddChildModal = false">
-            <text class="btn-text-outline">取消</text>
-          </view>
-          <view class="btn-primary modal-btn" @tap.stop="handleAddChild">
-            <text class="btn-text">{{ isSubmittingChild ? '添加中...' : '确认添加' }}</text>
-          </view>
-        </view>
+        </scroll-view>
       </view>
-    </view>
+
+      <!-- 无孩子 -->
+      <view v-if="userStore.children.length === 0" class="empty-state">
+        <text class="empty-icon">👶</text>
+        <text class="empty-text">还没有孩子信息</text>
+        <text class="empty-hint">请前往「我的」页面添加孩子</text>
+      </view>
+
+      <template v-else>
+        <!-- Tab切换 -->
+        <view class="tab-bar">
+          <view
+            class="tab-item"
+            :class="{ active: activeTab === 'weekly' }"
+            @tap="switchTab('weekly')"
+          >
+            <text class="tab-text">本周报告</text>
+          </view>
+          <view
+            class="tab-item"
+            :class="{ active: activeTab === 'history' }"
+            @tap="switchTab('history')"
+          >
+            <text class="tab-text">历史报告</text>
+          </view>
+        </view>
+
+        <!-- 生成报告按钮 (历史报告Tab下显示) -->
+        <view v-if="activeTab === 'history'" class="generate-section">
+          <view class="btn-generate" @tap="handleGenerateReport">
+            <text class="btn-icon">📊</text>
+            <text class="btn-text">{{ isGenerating ? '生成中...' : '生成新评估报告' }}</text>
+          </view>
+        </view>
+
+        <!-- 加载中 -->
+        <view v-if="isLoading" class="loading-area">
+          <view v-for="i in 3" :key="i" class="skeleton-block" />
+        </view>
+
+        <!-- 本周报告内容 -->
+        <view v-else-if="activeTab === 'weekly' && weeklyReport" class="report-content">
+          <!-- 本周概览 -->
+          <view class="section-card">
+            <text class="section-title">本周训练概览</text>
+            <view class="overview-grid">
+              <view class="overview-item">
+                <text class="overview-value">{{ weeklyReport.trainingCount }}</text>
+                <text class="overview-label">训练次数</text>
+              </view>
+              <view class="overview-item">
+                <text class="overview-value">{{ formatDuration(weeklyReport.totalDuration) }}</text>
+                <text class="overview-label">总训练时长</text>
+              </view>
+              <view class="overview-item" style="grid-column: 1 / -1">
+                <text
+                  class="overview-value"
+                  :style="{ color: getLevelColor(weeklyReport.avgFocusScore) }"
+                >
+                  {{ weeklyReport.avgFocusScore }}
+                </text>
+                <text class="overview-label">平均专注得分 · {{ getLevelLabel(weeklyReport.avgFocusScore) }}</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 每日趋势 -->
+          <view class="section-card">
+            <text class="section-title">本周专注趋势</text>
+            <view class="trend-chart">
+              <view
+                v-for="(day, index) in weeklyReport.trendData"
+                :key="index"
+                class="trend-bar-wrap"
+              >
+                <text class="trend-score">{{ day.focusScore || '-' }}</text>
+                <view class="trend-bar-track">
+                  <view
+                    class="trend-bar-fill"
+                    :style="{
+                      height: day.focusScore ? `${(day.focusScore / trendMax) * 100}%` : '0%',
+                      backgroundColor: getLevelColor(day.focusScore),
+                    }"
+                  />
+                </view>
+                <text class="trend-date">{{ day.date.slice(5) }}</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 游戏分布 -->
+          <view v-if="weeklyReport.gameBreakdown.length > 0" class="section-card">
+            <text class="section-title">游戏训练分布</text>
+            <view class="game-breakdown">
+              <view
+                v-for="item in weeklyReport.gameBreakdown"
+                :key="item.gameCode"
+                class="breakdown-item"
+              >
+                <view class="breakdown-left">
+                  <text class="breakdown-name">{{ item.gameName }}</text>
+                  <text class="breakdown-count">{{ item.count }} 次</text>
+                </view>
+                <view class="breakdown-right">
+                  <ProgressBar
+                    :value="item.avgScore"
+                    :color="'#6C63FF'"
+                    :height="12"
+                    :show-label="true"
+                  />
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <!-- 成就亮点 -->
+          <view v-if="weeklyReport.highlights.length > 0" class="section-card">
+            <text class="section-title">本周亮点</text>
+            <view class="highlights">
+              <view
+                v-for="(item, index) in weeklyReport.highlights"
+                :key="index"
+                class="highlight-item"
+              >
+                <view class="highlight-icon-wrap">
+                  <text class="highlight-icon">🏆</text>
+                </view>
+                <view class="highlight-content">
+                  <text class="highlight-title">{{ item.title }}</text>
+                  <text class="highlight-desc">{{ item.description }}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 历史报告列表 -->
+        <view v-else-if="activeTab === 'history'" class="report-list">
+          <view v-if="reportList.length === 0" class="empty-state">
+            <text class="empty-icon">📋</text>
+            <text class="empty-text">暂无历史报告</text>
+            <text class="empty-hint">点击上方按钮生成评估报告</text>
+          </view>
+          <view
+            v-else
+            v-for="report in reportList"
+            :key="report.id"
+            class="report-item"
+            @tap="viewReportDetail(report.id)"
+          >
+            <view class="report-item-left">
+              <text class="report-item-type">
+                {{ report.reportType === 'daily' ? '日报告' : report.reportType === 'weekly' ? '周报告' : '月报告' }}
+              </text>
+              <text class="report-item-date">{{ formatReportDate(report.createdAt) }}</text>
+            </view>
+            <view class="report-item-right">
+              <view class="report-item-score">
+                <text class="score-num">{{ report.overallScore }}</text>
+                <text class="score-unit">分</text>
+              </view>
+              <text class="report-item-arrow">›</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 暂无数据 -->
+        <view v-else-if="activeTab === 'weekly'" class="empty-state">
+          <text class="empty-icon">📊</text>
+          <text class="empty-text">本周暂无训练数据</text>
+          <text class="empty-hint">完成游戏后查看专注力报告</text>
+        </view>
+      </template>
+    </template>
   </view>
 </template>
 
@@ -264,355 +344,384 @@ function showAboutModal() {
 .page {
   min-height: 100vh;
   background-color: #f5f5f5;
-  padding-bottom: 60rpx;
+  padding-bottom: 40rpx;
 }
 
-.user-card {
-  background: linear-gradient(135deg, #6C63FF 0%, #9B94FF 100%);
-  padding: 48rpx 32rpx 48rpx;
-}
-
-.user-info {
+.not-login {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  gap: 24rpx;
+  padding: 120rpx 32rpx;
+  gap: 20rpx;
 }
 
-.avatar-btn {
-  padding: 0;
-  margin: 0;
-  background: none;
-  border: none;
+.not-login-icon { font-size: 80rpx; }
+.not-login-text { font-size: 30rpx; color: #666666; text-align: center; }
 
-  &::after { border: none; }
-}
-
-.avatar {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 50%;
-  border: 4rpx solid rgba(255,255,255,0.8);
-}
-
-.user-name {
-  display: block;
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.user-phone {
-  display: block;
-  font-size: 24rpx;
-  color: rgba(255,255,255,0.7);
-  margin-top: 8rpx;
-}
-
-.login-prompt {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 24rpx;
-
-  &:active { opacity: 0.8; }
-}
-
-.avatar-placeholder {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 50%;
-  border: 4rpx solid rgba(255,255,255,0.6);
-  background-color: rgba(255,255,255,0.3);
-}
-
-.login-title {
-  display: block;
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.login-hint {
-  display: block;
-  font-size: 24rpx;
-  color: rgba(255,255,255,0.7);
-  margin-top: 8rpx;
-}
-
-.section-card {
+.child-switch {
   background-color: #ffffff;
-  margin: 20rpx 24rpx 0;
-  border-radius: 24rpx;
-  overflow: hidden;
-  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.06);
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
 }
 
-.section-header {
+.child-scroll { width: 100%; }
+
+.child-list {
   display: flex;
   flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24rpx 28rpx 16rpx;
+  padding: 0 24rpx;
+  gap: 24rpx;
 }
 
-.section-title {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #333333;
-}
-
-.add-child-btn {
-  padding: 8rpx 20rpx;
-  background-color: #f0eeff;
-  border-radius: 99rpx;
-
-  &:active { opacity: 0.8; }
-}
-
-.add-child-text {
-  font-size: 24rpx;
-  color: #6C63FF;
-  font-weight: 600;
-}
-
-.no-child {
-  padding: 24rpx 28rpx;
-}
-
-.no-child-text {
-  font-size: 26rpx;
-  color: #999999;
-}
-
-.children-list {
-  padding: 0 8rpx 8rpx;
-}
-
-.child-item {
+.child-tab {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  padding: 16rpx 20rpx;
+  gap: 8rpx;
+  padding: 8rpx 16rpx;
   border-radius: 16rpx;
-  gap: 16rpx;
+  flex-shrink: 0;
 
-  &.active { background-color: #f0eeff; }
-  &:active { background-color: #f5f5f5; }
+  &.active {
+    background-color: #f0eeff;
+    .child-tab-name { color: #6C63FF; font-weight: 600; }
+  }
 }
 
-.child-avatar {
-  width: 80rpx;
-  height: 80rpx;
+.child-tab-avatar {
+  width: 72rpx;
+  height: 72rpx;
   border-radius: 50%;
   background-color: #f0f0f0;
 }
 
-.child-name {
-  display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #333333;
+.child-tab-name {
+  font-size: 22rpx;
+  color: #666666;
 }
 
-.child-meta {
+.tab-bar {
+  display: flex;
+  flex-direction: row;
+  background-color: #ffffff;
+  padding: 0 24rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.tab-item {
+  flex: 1;
+  padding: 24rpx 0;
+  text-align: center;
+
+  &.active {
+    border-bottom: 4rpx solid #6C63FF;
+    .tab-text { color: #6C63FF; font-weight: 600; }
+  }
+}
+
+.tab-text {
+  font-size: 28rpx;
+  color: #666666;
+}
+
+.generate-section {
+  padding: 24rpx;
+}
+
+.btn-generate {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  background-color: #6C63FF;
+  border-radius: 99rpx;
+  padding: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(108, 99, 255, 0.3);
+
+  &:active { opacity: 0.85; }
+}
+
+.btn-icon { font-size: 32rpx; }
+
+.btn-text {
+  font-size: 30rpx;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 32rpx;
+  gap: 16rpx;
+}
+
+.empty-icon { font-size: 80rpx; }
+.empty-text { font-size: 30rpx; color: #333333; font-weight: 600; }
+.empty-hint { font-size: 26rpx; color: #999999; text-align: center; }
+
+.loading-area {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.skeleton-block {
+  height: 200rpx;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  border-radius: 24rpx;
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.report-content {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.report-list {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.report-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #ffffff;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.06);
+
+  &:active { background-color: #f8f8f8; }
+}
+
+.report-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.report-item-type {
+  font-size: 28rpx;
+  color: #333333;
+  font-weight: 600;
+}
+
+.report-item-date {
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.report-item-right {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.report-item-score {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+}
+
+.score-num {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #6C63FF;
+}
+
+.score-unit {
+  font-size: 24rpx;
+  color: #999999;
+  margin-left: 4rpx;
+}
+
+.report-item-arrow {
+  font-size: 36rpx;
+  color: #cccccc;
+}
+
+.section-card {
+  background-color: #ffffff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.06);
+}
+
+.section-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #333333;
+  margin-bottom: 24rpx;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20rpx;
+}
+
+.overview-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #f8f8f8;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  gap: 8rpx;
+}
+
+.overview-value {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #6C63FF;
+}
+
+.overview-label {
+  font-size: 22rpx;
+  color: #999999;
+  text-align: center;
+}
+
+.trend-chart {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 200rpx;
+  padding: 0 8rpx;
+}
+
+.trend-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+  gap: 6rpx;
+}
+
+.trend-score {
+  font-size: 20rpx;
+  color: #333333;
+  font-weight: 600;
+  height: 28rpx;
+}
+
+.trend-bar-track {
+  flex: 1;
+  width: 32rpx;
+  background-color: #f0f0f0;
+  border-radius: 4rpx;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.trend-bar-fill {
+  width: 100%;
+  border-radius: 4rpx;
+  transition: height 0.5s ease;
+}
+
+.trend-date {
+  font-size: 20rpx;
+  color: #999999;
+  height: 28rpx;
+}
+
+.game-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.breakdown-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.breakdown-left {
+  width: 160rpx;
+  flex-shrink: 0;
+}
+
+.breakdown-name {
+  display: block;
+  font-size: 26rpx;
+  color: #333333;
+  font-weight: 500;
+}
+
+.breakdown-count {
   display: block;
   font-size: 22rpx;
   color: #999999;
   margin-top: 4rpx;
 }
 
-.current-badge {
-  margin-left: auto;
-  background-color: #6C63FF;
-  border-radius: 99rpx;
-  padding: 4rpx 16rpx;
+.breakdown-right {
+  flex: 1;
 }
 
-.current-text {
-  font-size: 20rpx;
-  color: #ffffff;
-}
-
-.menu-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 28rpx 28rpx;
-  border-bottom: 1rpx solid #f5f5f5;
-  gap: 16rpx;
-
-  &:last-child { border-bottom: none; }
-  &:active { background-color: #f8f8f8; }
-}
-
-.menu-icon { font-size: 36rpx; }
-.menu-label { flex: 1; font-size: 28rpx; color: #333333; }
-.menu-arrow { font-size: 32rpx; color: #cccccc; }
-
-.logout-btn {
-  margin: 20rpx 24rpx 0;
-  background-color: #ffffff;
-  border-radius: 24rpx;
-  padding: 28rpx;
-  text-align: center;
-  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.06);
-
-  &:active { opacity: 0.8; }
-}
-
-.logout-text {
-  font-size: 28rpx;
-  color: #FF8A80;
-  font-weight: 600;
-}
-
-.version-text {
-  display: block;
-  text-align: center;
-  font-size: 22rpx;
-  color: #cccccc;
-  margin-top: 32rpx;
-}
-
-/* 弹窗 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: flex-end;
-  z-index: 100;
-}
-
-.modal {
-  background-color: #ffffff;
-  border-radius: 32rpx 32rpx 0 0;
-  padding: 40rpx 32rpx;
-  width: 100%;
+.highlights {
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: 16rpx;
 }
 
-.modal-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #333333;
-  text-align: center;
-  display: block;
-  margin-bottom: 8rpx;
-}
-
-.form-item {
+.highlight-item {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  padding: 12rpx 0;
-  border-bottom: 1rpx solid #f5f5f5;
+  gap: 16rpx;
+  background-color: #f8f8f8;
+  border-radius: 16rpx;
+  padding: 16rpx 20rpx;
 }
 
-.form-label {
-  font-size: 28rpx;
-  color: #333333;
-  font-weight: 500;
-  width: 120rpx;
-}
-
-.form-input {
-  flex: 1;
-  font-size: 28rpx;
-  color: #333333;
-  text-align: right;
-}
-
-.form-value {
-  font-size: 28rpx;
-  color: #6C63FF;
-}
-
-.age-stepper {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 24rpx;
-}
-
-.stepper-btn {
-  width: 56rpx;
-  height: 56rpx;
-  background-color: #f0f0f0;
+.highlight-icon-wrap {
+  width: 64rpx;
+  height: 64rpx;
+  background-color: #fff9e6;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36rpx;
-  color: #333333;
-
-  &:active { background-color: #e0e0e0; }
+  flex-shrink: 0;
 }
 
-.stepper-value {
-  font-size: 32rpx;
+.highlight-icon { font-size: 32rpx; }
+
+.highlight-title {
+  display: block;
+  font-size: 28rpx;
   font-weight: 600;
   color: #333333;
-  min-width: 80rpx;
-  text-align: center;
 }
 
-.gender-select {
-  display: flex;
-  flex-direction: row;
-  gap: 16rpx;
-}
-
-.gender-btn {
-  padding: 12rpx 32rpx;
-  border-radius: 99rpx;
-  font-size: 26rpx;
+.highlight-desc {
+  display: block;
+  font-size: 24rpx;
   color: #666666;
-  background-color: #f5f5f5;
-
-  &.active {
-    background-color: #6C63FF;
-    color: #ffffff;
-    font-weight: 600;
-  }
-
-  &:active { opacity: 0.8; }
+  margin-top: 4rpx;
 }
-
-.modal-actions {
-  display: flex;
-  flex-direction: row;
-  gap: 16rpx;
-  margin-top: 8rpx;
-}
-
-.modal-btn {
-  flex: 1;
-  height: 88rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 99rpx;
-}
-
-.btn-primary {
-  background-color: #6C63FF;
-  &:active { opacity: 0.85; }
-}
-
-.btn-outline {
-  border: 2rpx solid #6C63FF;
-  background-color: transparent;
-  &:active { opacity: 0.85; }
-}
-
-.btn-text { color: #ffffff; font-size: 30rpx; font-weight: 600; }
-.btn-text-outline { color: #6C63FF; font-size: 30rpx; font-weight: 600; }
 </style>

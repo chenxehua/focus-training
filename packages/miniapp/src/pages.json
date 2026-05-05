@@ -121,6 +121,14 @@
       }
     },
     {
+      "path": "pages/report-detail/index",
+      "style": {
+        "navigationBarTitleText": "评估报告",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/achievement/index",
       "style": {
         "navigationBarTitleText": "成就中心",
