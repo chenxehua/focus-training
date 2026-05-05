@@ -12,20 +12,16 @@ export class GameController {
       const games = await query<any>(
         'SELECT * FROM game WHERE status = 1 ORDER BY id ASC'
       )
-      const gameTypeMap: Record<string, string> = {
-        'attention': '注意力', 'memory': '记忆', 'reaction': '反应',
-        'perception': '感知', 'meditation': '冥想', 'observation': '观察',
-        'calculation': '计算', 'auditory': '听觉', 'cognitive': '认知',
-        'visual': '视觉', 'rhythm': '节奏', 'spatial': '空间'
-      }
       res.json(
         successResponse(
           games.map(g => ({
             id: g.id,
             gameCode: g.game_code,
             gameName: g.game_name,
-            gameType: g.category || 'other',
-            category: gameTypeMap[g.category] || g.category || '其他',
+            gameType: g.category,
+            category: g.category,
+            difficultyLevels: g.difficulty_levels,
+            targetAgeGroup: `${g.min_age}-${g.max_age}`,
             difficultyLevels: g.difficulty_levels,
             targetAgeGroup: `${g.min_age}-${g.max_age}`,
             description: g.description,

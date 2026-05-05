@@ -53,12 +53,16 @@ let ageGroupChart: echarts.ECharts | null = null
 let gameStatsChart: echarts.ECharts | null = null
 let retentionChart: echarts.ECharts | null = null
 
+const trainingTrendChartRef = ref<HTMLDivElement>()
+const ageGroupChartRef = ref<HTMLDivElement>()
+const gameStatsChartRef = ref<HTMLDivElement>()
+const retentionChartRef = ref<HTMLDivElement>()
+
 const initCharts = () => {
   // 训练趋势图
-  const trendEl = document.getElementById('training-trend-chart')
-  if (trendEl) {
+  if (trainingTrendChartRef.value) {
     if (!trainingTrendChart) {
-      trainingTrendChart = echarts.init(trendEl)
+      trainingTrendChart = echarts.init(trainingTrendChartRef.value)
     }
     trainingTrendChart.setOption({
       tooltip: { trigger: 'axis' },
@@ -95,10 +99,9 @@ const initCharts = () => {
   }
 
   // 年龄段分布饼图
-  const ageEl = document.getElementById('age-group-chart')
-  if (ageEl) {
+  if (ageGroupChartRef.value) {
     if (!ageGroupChart) {
-      ageGroupChart = echarts.init(ageEl)
+      ageGroupChart = echarts.init(ageGroupChartRef.value)
     }
     ageGroupChart.setOption({
       tooltip: { trigger: 'item' },
@@ -115,10 +118,9 @@ const initCharts = () => {
   }
 
   // 游戏使用统计
-  const gameEl = document.getElementById('game-stats-chart')
-  if (gameEl) {
+  if (gameStatsChartRef.value) {
     if (!gameStatsChart) {
-      gameStatsChart = echarts.init(gameEl)
+      gameStatsChart = echarts.init(gameStatsChartRef.value)
     }
     gameStatsChart.setOption({
       tooltip: { trigger: 'axis' },
@@ -138,10 +140,9 @@ const initCharts = () => {
   }
 
   // 用户留存
-  const retEl = document.getElementById('retention-chart')
-  if (retEl) {
+  if (retentionChartRef.value) {
     if (!retentionChart) {
-      retentionChart = echarts.init(retEl)
+      retentionChart = echarts.init(retentionChartRef.value)
     }
     retentionChart.setOption({
       tooltip: { trigger: 'axis' },

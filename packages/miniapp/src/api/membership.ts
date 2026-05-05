@@ -11,6 +11,15 @@ export interface MembershipInfo {
   isVip: boolean
 }
 
+export interface MembershipStatus {
+  is_vip: boolean
+  member_type: string | null
+  member_level: string | null
+  start_date: string | null
+  end_date: string | null
+  days_remaining: number
+}
+
 export interface OrderInfo {
   orderId: string
   amount: number
@@ -92,4 +101,11 @@ export function getMembershipBenefits() {
       features: string[]
     }>
   }>('/api/membership/benefits')
+}
+
+/**
+ * 获取会员状态
+ */
+export function getMembershipStatus() {
+  return get<MembershipStatus>('/api/membership/status')
 }
