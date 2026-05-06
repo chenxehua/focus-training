@@ -60,6 +60,10 @@ function handleLogout() {
   })
 }
 
+function goToLogin() {
+  uni.navigateTo({ url: '/pages/login/index' })
+}
+
 onMounted(() => {
   if (userStore.isLoggedIn) {
     loadUserData()
