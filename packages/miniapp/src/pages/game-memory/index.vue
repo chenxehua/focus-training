@@ -262,22 +262,6 @@ function resetGame() {
     loadConfig('8-9')
   }
 }
-        childId: userStore.currentChild.id,
-        gameId: 4, // G004 图形记忆
-        durationSeconds: Math.max(1, elapsedSeconds.value),
-        accuracy: (Math.round((correctCount.value / currentPatternCount.value) * 100)) / 100,
-        score,
-        focusScore,
-        difficultyLevel: difficulty.value,
-        gameConfig: { patternCount: currentPatternCount.value },
-        resultData: { correctCount: correctCount.value, totalCount: currentPatternCount.value },
-      })
-      gameStore.addTodayRecord(res.data)
-    } catch (error) {
-      console.error('submit record error:', error)
-    }
-  }
-}
 
 function resetGame() {
   stopGameTimer()
