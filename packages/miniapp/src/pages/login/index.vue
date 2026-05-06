@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { onUnmounted } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
