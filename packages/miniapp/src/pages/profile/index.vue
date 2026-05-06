@@ -10,8 +10,8 @@ const membershipStatus = ref<any>(null)
 const achievements = ref<any[]>([])
 const isLoading = ref(false)
 
-const isVip = computed(() => membershipStatus.value?.isVip || false)
-const vipExpireDate = computed(() => membershipStatus.value?.expireDate || '')
+const isVip = computed(() => membershipStatus.value?.is_vip || false)
+const vipExpireDate = computed(() => membershipStatus.value?.end_date || membershipStatus.value?.expireDate || '')
 
 async function loadUserData() {
   if (!userStore.isLoggedIn) return
