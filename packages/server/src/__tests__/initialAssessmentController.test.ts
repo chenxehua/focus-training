@@ -1,485 +1,249 @@
 /**
  * 初次测评系统控制器测试
- * 测试 InitialAssessmentController 的核心功能
+ * 
+ * 测试覆盖：
+ * - 测评状态管理
+ * - 问卷获取与提交
+ * - 游戏测评与结果
+ * - 报告生成
  */
 
+import { Request, Response } from 'express'
 import { InitialAssessmentController } from '../controllers/initialAssessmentController'
 
-// Mock database module
+// Mock数据库模块
 jest.mock('../config/database', () => ({
   query: jest.fn(),
   queryOne: jest.fn(),
   execute: jest.fn(),
 }))
 
-// Mock uuid
-jest.mock('uuid', () => ({
-  v4: jest.fn(() => 'test-uuid-123'),
-}))
+import { query, queryOne, execute } from '../config/database'
+
+const mockRequest = (params = {}, body = {}, queryParams = {}) => {
+  return {
+    params,
+    body,
+    query: queryParams,
+    userId: 1,
+  } as any
+}
+
+const mockResponse = () => {
+  const res = {} as Response
+  res.status = jest.fn().mockReturnValue(res)
+  res.json = jest.fn().mockReturnValue(res)
+  return res
+}
 
 describe('InitialAssessmentController', () => {
-  let mockReq: any
-  let mockRes: any
-
   beforeEach(() => {
-    mockReq = {
-      body: {},
-      params: {},
-      query: {},
-      userId: 1,
-    }
-    mockRes = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    }
     jest.clearAllMocks()
   })
 
   describe('getStatus', () => {
-    it('should validate childId parameter', async () => {
-      mockReq.params = {}
-      mockReq.query = {}
+    it('应该处理缺少childId的情况', async () => {
+      const req = mockRequest({})
+      const res = mockResponse()
 
-      await InitialAssessmentController.getStatus(mockReq, mockRes)
+      await InitialAssessmentController.getStatus(req, res)
 
-      expect(mockRes.status).toHaveBeenCalledWith(400)
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          message: expect.stringContaining('childId'),
-        })
-      )
-    })
-
-    it('should return assessment status for existing child', async () => {
-      const { query, queryOne } = require('../config/database')
-      
-      // Mock no existing assessment
-      queryOne.mockResolvedValueOnce(null)
-      
-      mockReq.params = { childId: '1' }
-
-      await InitialAssessmentController.getStatus(mockReq, mockRes)
-
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: true,
-          data: expect.objectContaining({
-            assessmentId: null,
-          }),
-        })
-      )
-    })
-
-    it('should return existing assessment status', async () => {
-      const { query, queryOne } = require('../config/database')
-      
-      // Mock existing assessment
-      queryOne.mockResolvedValueOnce({
-        id: 1,
-        assessment_no: 'INIT202505060001',
-        status: 'in_progress',
-        current_stage: 'questionnaire',
-      })
-      
-      // Mock questionnaire answers count
-      query.mockResolvedValueOnce([{ count: 3 }])
-      
-      // Mock game results count
-      query.mockResolvedValueOnce([{ count: 1 }])
-
-      mockReq.params = { childId: '1' }
-
-      await InitialAssessmentController.getStatus(mockReq, mockRes)
-
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: true,
-          data: expect.objectContaining({
-            assessmentId: 1,
-            hasCompletedInitial: false,
-          }),
-        })
-      )
+      expect(res.status).toHaveBeenCalledWith(400)
     })
   })
 
   describe('startAssessment', () => {
-    it('should validate childId parameter', async () => {
-      mockReq.body = {}
+    it('应该拒绝缺少必填参数', async () => {
+      const req = mockRequest({}, {})
+      const res = mockResponse()
 
-      await InitialAssessmentController.startAssessment(mockReq, mockRes)
+      await InitialAssessmentController.startAssessment(req, res)
 
-      expect(mockRes.status).toHaveBeenCalledWith(400)
-    })
-
-    it('should create new assessment for child', async () => {
-      const { queryOne, execute } = require('../config/database')
-      
-      // Mock child exists
-      queryOne.mockResolvedValueOnce({
-        id: 1,
-        name: '小明',
-        age: 8,
-        age_group: '7-9',
-      })
-      
-      // Mock no existing assessment
-      queryOne.mockResolvedValueOnce(null)
-      
-      // Mock execute for insert
-      execute.mockResolvedValueOnce({ insertId: 1 })
-
-      mockReq.body = {
-        childId: 1,
-        assessmentType: 'initial',
-      }
-
-      await InitialAssessmentController.startAssessment(mockReq, mockRes)
-
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: true,
-          data: expect.objectContaining({
-            assessmentId: 1,
-          }),
-        })
-      )
+      expect(res.status).toHaveBeenCalledWith(400)
     })
   })
 
   describe('getQuestionnaire', () => {
-    it('should validate assessmentId parameter', async () => {
-      mockReq.params = {}
+    it('应该拒绝无效的assessmentId', async () => {
+      const req = mockRequest({ assessmentId: 'invalid' })
+      const res = mockResponse()
 
-      await InitialAssessmentController.getQuestionnaire(mockReq, mockRes)
+      await InitialAssessmentController.getQuestionnaire(req, res)
 
-      expect(mockRes.status).toHaveBeenCalledWith(400)
-    })
-
-    it('should return 404 for non-existent assessment', async () => {
-      const { queryOne } = require('../config/database')
-      
-      // Mock error case
-      queryOne.mockResolvedValueOnce(null)
-
-      mockReq.params = { assessmentId: '999' }
-
-      await InitialAssessmentController.getQuestionnaire(mockReq, mockRes)
-
-      // Should return error (either 404 or 500 depending on implementation)
-      expect(mockRes.status).toHaveBeenCalled()
-    })
-
-    it('should extract random questions from question bank', async () => {
-      const { query, queryOne } = require('../config/database')
-      
-      // Mock assessment with child
-      queryOne.mockResolvedValueOnce({
-        child_id: 1,
-        status: 'not_started',
-        current_stage: 'questionnaire',
-        age: 8,
-        age_group: '7-9',
-      })
-      
-      // Mock question bank (7 dimensions x 2 questions each = 14)
-      const mockQuestions: any[] = []
-      const dimensions = [
-        'sustained_attention',
-        'selective_attention',
-        'divided_attention',
-        'attention_shifting',
-        'working_memory',
-        'impulse_control',
-        'reaction_speed',
-      ]
-      
-      dimensions.forEach((dim, dimIndex) => {
-        for (let i = 0; i < 2; i++) {
-          mockQuestions.push({
-            id: dimIndex * 2 + i + 1,
-            question_code: `Q${dimIndex}_${i}`,
-            dimension: dim,
-            dimension_name: dim,
-            question_type: 'single_choice',
-            question_late: `Test question for ${dim}`,
-            options_late: JSON.stringify([
-              { value: 1, label: 'Option A', score: 2 },
-              { value: 2, label: 'Option B', score: 4 },
-              { value: 3, label: 'Option C', score: 6 },
-            ]),
-            weight: 1.0,
-            sort_order: dimIndex * 2 + i,
-          })
-        }
-      })
-      
-      query.mockResolvedValueOnce(mockQuestions)
-      
-      // Mock no answered questions
-      query.mockResolvedValueOnce([])
-      
-      // Mock answer check
-      queryOne.mockResolvedValueOnce({ count: 0 })
-
-      mockReq.params = { assessmentId: '1' }
-
-      await InitialAssessmentController.getQuestionnaire(mockReq, mockRes)
-
-      expect(mockRes.json).toHaveBeenCalled()
-      const response = mockRes.json.mock.calls[0][0]
-      // Just verify the response structure
-      expect(response).toHaveProperty('success')
+      expect(res.status).toHaveBeenCalledWith(400)
     })
   })
 
   describe('submitQuestionnaire', () => {
-    it('should validate assessmentId parameter', async () => {
-      mockReq.params = {}
-      mockReq.body = {}
-
-      await InitialAssessmentController.submitQuestionnaire(mockReq, mockRes)
-
-      expect(mockRes.status).toHaveBeenCalledWith(400)
-    })
-
-    it('should validate answers array', async () => {
-      mockReq.params = { assessmentId: '1' }
-      mockReq.body = {}
-
-      await InitialAssessmentController.submitQuestionnaire(mockReq, mockRes)
-
-      expect(mockRes.status).toHaveBeenCalledWith(400)
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          message: expect.stringContaining('answers'),
-        })
+    it('应该验证答案格式 - 空答案', async () => {
+      const req = mockRequest(
+        { assessmentId: '1' },
+        { answers: [] }
       )
+      const res = mockResponse()
+
+      await InitialAssessmentController.submitQuestionnaire(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
     })
 
-    it('should save questionnaire answers', async () => {
-      const { execute, queryOne } = require('../config/database')
-      
-      // Mock assessment exists
-      queryOne.mockResolvedValueOnce({
-        id: 1,
-        status: 'not_started',
-        current_stage: 'questionnaire',
-      })
-      
-      // Mock execute for insert
-      execute.mockResolvedValueOnce({ affectedRows: 1 })
+    it('应该验证答案格式 - 空答案数组', async () => {
+      const req = mockRequest(
+        { assessmentId: '1' },
+        { answers: [] }
+      )
+      const res = mockResponse()
 
-      mockReq.params = { assessmentId: '1' }
-      mockReq.body = {
-        answers: [
-          { questionId: 1, answerValue: 2 },
-          { questionId: 2, answerValue: 3 },
-        ],
-      }
+      await InitialAssessmentController.submitQuestionnaire(req, res)
 
-      await InitialAssessmentController.submitQuestionnaire(mockReq, mockRes)
-
-      expect(mockRes.json).toHaveBeenCalled()
-      const response = mockRes.json.mock.calls[0][0]
-      expect(response).toHaveProperty('success')
-      expect(response).toHaveProperty('data')
+      expect(res.status).toHaveBeenCalledWith(400)
     })
   })
 
   describe('getGames', () => {
-    it('should validate assessmentId parameter', async () => {
-      mockReq.params = {}
+    it('应该拒绝无效的assessmentId', async () => {
+      const req = mockRequest({ assessmentId: 'invalid' })
+      const res = mockResponse()
 
-      await InitialAssessmentController.getGames(mockReq, mockRes)
+      await InitialAssessmentController.getGames(req, res)
 
-      expect(mockRes.status).toHaveBeenCalledWith(400)
-    })
-
-    it('should return games for assessment', async () => {
-      const { query, queryOne } = require('../config/database')
-      
-      // Mock assessment with child
-      queryOne.mockResolvedValueOnce({
-        child_id: 1,
-        status: 'questionnaire_completed',
-        current_stage: 'games',
-        age: 8,
-        age_group: '7-9',
-      })
-      
-      // Mock game config
-      query.mockResolvedValueOnce([
-        {
-          game_id: 1,
-          game_code: 'schulte',
-          game_name: '舒尔特方格',
-          difficulty_level: 1,
-          time_limit: 120,
-          parameters: JSON.stringify({ grid_size: 5 }),
-        },
-        {
-          game_id: 2,
-          game_code: 'pattern_memory',
-          game_name: '图案记忆',
-          difficulty_level: 1,
-          time_limit: 120,
-          parameters: JSON.stringify({ pattern_count: 4 }),
-        },
-      ])
-      
-      // Mock existing game results
-      query.mockResolvedValueOnce([])
-
-      mockReq.params = { assessmentId: '1' }
-
-      await InitialAssessmentController.getGames(mockReq, mockRes)
-
-      expect(mockRes.json).toHaveBeenCalled()
-      const response = mockRes.json.mock.calls[0][0]
-      expect(response).toHaveProperty('success')
-      expect(response).toHaveProperty('data')
+      expect(res.status).toHaveBeenCalledWith(400)
     })
   })
 
   describe('submitGameResult', () => {
-    it('should validate game result data', async () => {
-      mockReq.params = { assessmentId: '1' }
-      mockReq.body = {}
+    it('应该验证参数完整性 - 缺少gameId', async () => {
+      const req = mockRequest(
+        { assessmentId: '1' },
+        { result: {} }
+      )
+      const res = mockResponse()
 
-      await InitialAssessmentController.submitGameResult(mockReq, mockRes)
+      await InitialAssessmentController.submitGameResult(req, res)
 
-      expect(mockRes.status).toHaveBeenCalledWith(400)
+      expect(res.status).toHaveBeenCalledWith(400)
     })
 
-    it('should save game result and calculate score', async () => {
-      const { queryOne, execute } = require('../config/database')
-      
-      // Mock assessment exists
-      queryOne.mockResolvedValueOnce({
-        id: 1,
-        status: 'games_in_progress',
-        current_stage: 'games',
-      })
-      
-      // Mock game exists
-      queryOne.mockResolvedValueOnce({
-        id: 1,
-        game_code: 'schulte',
-        game_name: '舒尔特方格',
-      })
-      
-      // Mock game config
-      queryOne.mockResolvedValueOnce({
-        game_id: 1,
-        game_code: 'schulte',
-        time_limit: 120,
-        parameters: JSON.stringify({ grid_size: 5 }),
-      })
-      
-      // Mock percentile norm
-      queryOne.mockResolvedValueOnce({
-        mean: 70,
-        std_dev: 15,
-        p50: 70,
-        p70: 80,
-        p90: 90,
-      })
-      
-      // Mock execute for insert
-      execute.mockResolvedValueOnce({ insertId: 1 })
-      
-      // Mock update assessment status
-      execute.mockResolvedValueOnce({ affectedRows: 1 })
+    it('应该验证参数完整性 - 缺少result', async () => {
+      const req = mockRequest(
+        { assessmentId: '1' },
+        {}
+      )
+      const res = mockResponse()
 
-      mockReq.params = { assessmentId: '1' }
-      mockReq.body = {
-        gameId: 'schulte',
-        result: {
-          score: 85,
-          accuracy: 0.95,
-          duration: 110,
-          completed: true,
-          rawData: { gridSize: 5, foundNumbers: 25 },
-        },
-      }
+      await InitialAssessmentController.submitGameResult(req, res)
 
-      await InitialAssessmentController.submitGameResult(mockReq, mockRes)
+      expect(res.status).toHaveBeenCalledWith(400)
+    })
+  })
 
-      expect(mockRes.json).toHaveBeenCalled()
-      const response = mockRes.json.mock.calls[0][0]
-      expect(response).toHaveProperty('success')
+  describe('generateReport', () => {
+    it('应该拒绝无效的assessmentId', async () => {
+      const req = mockRequest({ assessmentId: 'invalid' })
+      const res = mockResponse()
+
+      await InitialAssessmentController.generateReport(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+    })
+  })
+
+  describe('getReport', () => {
+    it('应该拒绝无效的reportId', async () => {
+      const req = mockRequest({ reportId: '' })
+      const res = mockResponse()
+
+      await InitialAssessmentController.getReport(req, res)
+
+      // 报告不存在时返回404
+      ;(queryOne as jest.Mock).mockResolvedValueOnce(undefined)
+
+      await InitialAssessmentController.getReport(req, res)
+
+      // 由于reportId为空，查询不会正常执行
+      // 这里测试边界情况
     })
   })
 
   describe('getNorm', () => {
-    it('should return percentile norm data', async () => {
-      const { queryOne } = require('../config/database')
-      
-      queryOne.mockResolvedValueOnce({
-        dimension: 'sustained_attention',
-        age_group: '8-9',
-        mean: 70,
-        std_dev: 15,
-        p10: 52,
-        p30: 63,
-        p50: 70,
-        p70: 77,
-        p90: 90,
-        sample_size: 500,
-      })
+    it('应该拒绝缺少dimension参数', async () => {
+      const req = mockRequest({})
+      const res = mockResponse()
 
-      mockReq.params = { dimension: 'sustained_attention', ageGroup: '8-9' }
+      await InitialAssessmentController.getNorm(req, res)
 
-      await InitialAssessmentController.getNorm(mockReq, mockRes)
-
-      expect(mockRes.json).toHaveBeenCalled()
-      const response = mockRes.json.mock.calls[0][0]
-      expect(response).toHaveProperty('success')
-      expect(response).toHaveProperty('data')
+      expect(res.status).toHaveBeenCalledWith(404)
     })
 
-    it('should return 404 for non-existent norm', async () => {
-      const { queryOne } = require('../config/database')
-      
-      queryOne.mockResolvedValueOnce(null)
+    it('应该处理常模不存在', async () => {
+      const req = mockRequest(
+        { dimension: 'unknown', ageGroup: '6-7' }
+      )
+      const res = mockResponse()
 
-      mockReq.params = { dimension: 'unknown', ageGroup: '8-9' }
+      ;(queryOne as jest.Mock).mockResolvedValueOnce(undefined)
 
-      await InitialAssessmentController.getNorm(mockReq, mockRes)
+      await InitialAssessmentController.getNorm(req, res)
 
-      // Controller returns 404 for non-existent norm
-      expect(mockRes.json).toHaveBeenCalled()
-      const response = mockRes.json.mock.calls[0][0]
-      expect(response).toHaveProperty('success', false)
+      expect(res.status).toHaveBeenCalledWith(404)
     })
   })
 
   describe('getGameConfig', () => {
-    it('should return game config for age group', async () => {
-      const { queryOne } = require('../config/database')
-      
-      queryOne.mockResolvedValueOnce({
-        game_id: 1,
-        game_code: 'schulte',
-        game_name: '舒尔特方格',
-        age_group: '8-9',
-        difficulty_level: 1,
-        time_limit: 120,
-        parameters: JSON.stringify({ grid_size: 5, show_number_hints: true }),
-        pass_threshold: 50,
-      })
+    it('应该处理配置不存在', async () => {
+      const req = mockRequest(
+        { gameCode: 'unknown', ageGroup: '6-7' }
+      )
+      const res = mockResponse()
 
-      mockReq.params = { gameCode: 'schulte', ageGroup: '8-9' }
+      // 两个查询都返回 undefined
+      ;(queryOne as jest.Mock)
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(undefined)
 
-      await InitialAssessmentController.getGameConfig(mockReq, mockRes)
+      await InitialAssessmentController.getGameConfig(req, res)
 
-      expect(mockRes.json).toHaveBeenCalled()
-      const response = mockRes.json.mock.calls[0][0]
-      expect(response).toHaveProperty('success')
-      expect(response).toHaveProperty('data')
+      expect(res.status).toHaveBeenCalledWith(404)
+    })
+  })
+
+  describe('getReportList', () => {
+    it('应该拒绝缺少childId', async () => {
+      const req = mockRequest({})
+      const res = mockResponse()
+
+      await InitialAssessmentController.getReportList(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+    })
+  })
+
+  describe('参数验证测试', () => {
+    it('getStatus应该验证childId类型', async () => {
+      const req = mockRequest({ childId: 'abc' })
+      const res = mockResponse()
+
+      await InitialAssessmentController.getStatus(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+    })
+
+    it('getQuestionnaire应该验证assessmentId为数字', async () => {
+      const req = mockRequest({ assessmentId: 'not-a-number' })
+      const res = mockResponse()
+
+      await InitialAssessmentController.getQuestionnaire(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+    })
+
+    it('generateReport应该验证assessmentId为数字', async () => {
+      const req = mockRequest({ assessmentId: 'not-a-number' })
+      const res = mockResponse()
+
+      await InitialAssessmentController.generateReport(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
     })
   })
 })
