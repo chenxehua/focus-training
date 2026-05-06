@@ -25,6 +25,14 @@
       }
     },
     {
+      "path": "pages/games/game-list",
+      "style": {
+        "navigationBarTitleText": "全部游戏",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/game-schulte/index",
       "style": {
         "navigationBarTitleText": "舒尔特方格",
@@ -106,6 +114,14 @@
     },
     {
       "path": "pages/parent/index",
+      "style": {
+        "navigationBarTitleText": "家长报告",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/report/index",
       "style": {
         "navigationBarTitleText": "家长报告",
         "navigationBarBackgroundColor": "#6C63FF",

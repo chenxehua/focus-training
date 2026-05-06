@@ -287,7 +287,7 @@ async function finishGame() {
         childId: userStore.currentChild.id,
         gameId: 5, // G005 节奏点击
         durationSeconds: Math.round((Date.now() - startTime.value) / 1000),
-        accuracy: (Math.round(((perfectCount.value + goodCount.value + okCount.value) / clickResults.value.length) * 100)) / 100),
+        accuracy: Math.round(((perfectCount.value + goodCount.value + okCount.value) / clickResults.value.length) * 100) / 100,
         score: resultScore.value,
         focusScore: resultScore.value,
         difficultyLevel: difficulty.value,

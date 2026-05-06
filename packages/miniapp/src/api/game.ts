@@ -42,3 +42,7 @@ export function getGameRecords(params: GetRecordsParams) {
 export function getGameDetail(gameId: number) {
   return get<GameInfo>(`/api/game/${gameId}`)
 }
+
+export function getGameConfig(gameCode: string, ageGroup: string) {
+  return get<Record<string, unknown>>(`/api/game/config`, { gameCode, ageGroup } as Record<string, unknown>)
+}

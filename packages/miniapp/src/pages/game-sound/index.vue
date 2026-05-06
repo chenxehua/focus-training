@@ -321,7 +321,7 @@ async function finishGame() {
         childId: userStore.currentChild.id,
         gameId: 6, // G006 听觉记忆
         durationSeconds: elapsedSeconds.value,
-        accuracy: (Math.round((correctCount.value / questions.value.length) * 100)) / 100),
+        accuracy: Math.round((correctCount.value / questions.value.length) * 100) / 100,
         score: resultScore.value,
         focusScore: resultScore.value,
         difficultyLevel: difficulty.value,

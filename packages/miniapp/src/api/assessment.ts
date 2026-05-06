@@ -64,3 +64,10 @@ export function getReportHistory(childId: number, type: 'daily' | 'weekly' | 'mo
     total: number
   }>(`/api/assessment/${childId}/history`, { type })
 }
+
+// 初始评估 API
+export const initialAssessmentApi = {
+  getStatus: (childId: number) => get<{ inProgress: boolean; completedCount: number }>(`/api/assessment/${childId}/status`),
+  start: (childId: number) => get<{ assessmentId: number }>(`/api/assessment/${childId}/start`),
+  getConfig: () => get<Record<string, unknown>>('/api/assessment/config'),
+}
