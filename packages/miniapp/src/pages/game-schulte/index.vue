@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { useGameStore } from '@/store/game'
+import { useAgeAdaptiveGame, type AgeGroup } from '@/composables/useAgeAdaptiveGame'
 import { submitGameRecord } from '@/api/game'
 import StarRating from '@/components/StarRating.vue'
 
@@ -15,6 +16,29 @@ interface Cell {
 const userStore = useUserStore()
 const gameStore = useGameStore()
 
+// 页面参数
+const props = defineProps<{
+  // 评估模式：从URL参数传入
+  assessmentId?: number
+  ageGroup?: AgeGroup
+}>()
+
+// 游戏模式
+const gameMode = computed(() => props.assessmentId ? 'assessment' : 'training')
+
+// 年龄适配配置
+const { 
+  loading: configLoading, 
+  error: configError,
+  ageGroup,
+  gridSize: apiGridSize,
+  timeLimit: apiTimeLimit,
+  difficultyLevel: apiDifficulty,
+  showNumberHints,
+  loadConfig,
+  setAgeGroup,
+} = useAgeAdaptiveGame('schulte', gameMode.value as any)
+
 // 游戏状态
 type GameStatus = 'idle' | 'playing' | 'finished'
 const gameStatus = ref<GameStatus>('idle')
@@ -27,15 +51,38 @@ const elapsedSeconds = ref<number>(0)
 // 本地计时器
 let gameTimer: ReturnType<typeof setInterval> | null = null
 
-// 难度配置
+// 难度配置（训练模式使用）
 const difficultyConfig: Record<DifficultyLevel, { size: number; label: string; timeLimit: number }> = {
   1: { size: 3, label: '简单 (3×3)', timeLimit: 60 },
   2: { size: 4, label: '中等 (4×4)', timeLimit: 120 },
   3: { size: 5, label: '困难 (5×5)', timeLimit: 180 },
 }
 
-const currentConfig = computed(() => difficultyConfig[difficulty.value])
-const gridSize = computed(() => currentConfig.value.size)
+// 计算当前网格大小
+const currentGridSize = computed(() => {
+  if (gameMode.value === 'assessment') {
+    // 评估模式：使用API配置的网格大小
+    return apiGridSize.value
+  } else {
+    // 训练模式：使用用户选择的难度
+    return difficultyConfig[difficulty.value].size
+  }
+})
+
+const currentConfig = computed(() => {
+  if (gameMode.value === 'assessment') {
+    // 评估模式
+    return {
+      size: apiGridSize.value,
+      label: `${apiGridSize.value}×${apiGridSize.value} 方格`,
+      timeLimit: apiTimeLimit.value,
+    }
+  } else {
+    return difficultyConfig[difficulty.value]
+  }
+})
+
+const gridSize = currentGridSize
 const totalCells = computed(() => gridSize.value * gridSize.value)
 
 // 计算布局
@@ -133,6 +180,75 @@ function calculateScore(elapsed: number, errors: number, total: number): { score
   return { score, focusScore }
 }
 
+// 页面加载
+onMounted(() => {
+  // 确定年龄组
+  let targetAgeGroup: AgeGroup = '8-9' // 默认值
+  
+  if (props.ageGroup) {
+    targetAgeGroup = props.ageGroup
+  } else if (userStore.currentChild?.birthDate) {
+    // 从当前儿童信息推断年龄组
+    const { inferAgeGroup } = useAgeAdaptiveGame('schulte')
+    targetAgeGroup = inferAgeGroup(userStore.currentChild.birthDate)
+  }
+  
+  // 加载配置
+  loadConfig(targetAgeGroup)
+})
+
+// 提交记录
+async function submitRecord(elapsed: number, score: number, focusScore: number) {
+  if (!userStore.currentChild) return
+  
+  try {
+    const accuracyValue = totalCells.value > 0
+      ? Math.round(((totalCells.value - errorCount.value) / totalCells.value) * 100)
+      : 100
+    
+    if (gameMode.value === 'assessment' && props.assessmentId) {
+      // 评估模式：提交到评估API
+      const { submitGameResult } = await import('@/api/initialAssessment')
+      await submitGameResult(props.assessmentId, 'schulte', {
+        score,
+        accuracy: accuracyValue / 100,
+        duration: Math.max(1, elapsed),
+        focusScore,
+        gameConfig: { 
+          gridSize: gridSize.value,
+          showNumberHints: showNumberHints.value,
+        },
+        rawData: {
+          errorCount: errorCount.value,
+          totalCells: totalCells.value,
+          elapsedSeconds: elapsed,
+          difficultyLevel: apiDifficulty.value,
+        },
+      })
+    } else {
+      // 训练模式：提交到游戏API
+      const res = await submitGameRecord({
+        childId: userStore.currentChild.id,
+        gameId: 1, // G001 舒尔特方格
+        durationSeconds: Math.max(1, elapsed),
+        accuracy: accuracyValue / 100,
+        score,
+        focusScore,
+        difficultyLevel: difficulty.value,
+        gameConfig: { gridSize: gridSize.value },
+        resultData: {
+          errorCount: errorCount.value,
+          totalCells: totalCells.value,
+          elapsedSeconds: elapsed,
+        },
+      })
+      gameStore.addTodayRecord(res.data)
+    }
+  } catch (error) {
+    console.error('submit record error:', error)
+  }
+}
+
 async function finishGame() {
   // 先停止计时器，确保计时停止
   stopGameTimer()
@@ -145,31 +261,7 @@ async function finishGame() {
   showResult.value = true
 
   // 提交记录
-  if (userStore.currentChild) {
-    try {
-      const accuracyValue = totalCells.value > 0
-        ? Math.round(((totalCells.value - errorCount.value) / totalCells.value) * 100)
-        : 100
-      const res = await submitGameRecord({
-        childId: userStore.currentChild.id,
-        gameId: 1, // G001 舒尔特方格
-        durationSeconds: Math.max(1, elapsed),
-        accuracy: accuracyValue / 100, // 转为 0-1 范围
-        score,
-        focusScore,
-        difficultyLevel: difficulty.value,
-        gameConfig: { gridSize: gridSize.value },
-        resultData: {
-          errorCount: errorCount.value,
-          totalCells: totalCells.value,
-          elapsedSeconds: elapsed,
-        },
-      })
-      gameStore.addTodayRecord(res.data)
-    } catch (error) {
-      console.error('submit record error:', error)
-    }
-  }
+  await submitRecord(elapsed, score, focusScore)
 }
 
 function resetGame() {
@@ -180,6 +272,11 @@ function resetGame() {
   nextTarget.value = 1
   errorCount.value = 0
   elapsedSeconds.value = 0
+  
+  // 评估模式下，重新加载配置
+  if (gameMode.value === 'assessment') {
+    loadConfig(ageGroup.value)
+  }
 }
 
 function formatTime(seconds: number): string {

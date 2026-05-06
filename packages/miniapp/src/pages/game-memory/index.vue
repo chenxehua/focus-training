@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { useGameStore } from '@/store/game'
+import { useAgeAdaptiveGame, type AgeGroup } from '@/composables/useAgeAdaptiveGame'
 import { submitGameRecord } from '@/api/game'
 import StarRating from '@/components/StarRating.vue'
 
@@ -17,6 +18,24 @@ interface PatternItem {
 const userStore = useUserStore()
 const gameStore = useGameStore()
 
+// 页面参数
+const props = defineProps<{
+  assessmentId?: number
+  ageGroup?: AgeGroup
+}>()
+
+// 游戏模式
+const gameMode = computed(() => props.assessmentId ? 'assessment' : 'training')
+
+// 年龄适配配置
+const {
+  patternCount: apiPatternCount,
+  showTime: apiShowTime,
+  timeLimit: apiTimeLimit,
+  difficultyLevel: apiDifficulty,
+  loadConfig,
+} = useAgeAdaptiveGame('pattern_memory', gameMode.value as any)
+
 // 游戏状态
 type GameStatus = 'idle' | 'memorizing' | 'playing' | 'finished'
 const gameStatus = ref<GameStatus>('idle')
@@ -26,14 +45,35 @@ const elapsedSeconds = ref(0)
 // 本地计时器
 let gameTimer: ReturnType<typeof setInterval> | null = null
 
-// 图案配置
+// 图案配置（训练模式使用）
 const difficultyConfig: Record<DifficultyLevel, { count: number; showTime: number; label: string }> = {
   1: { count: 4, showTime: 3000, label: '简单 (4个)' },
   2: { count: 6, showTime: 2500, label: '中等 (6个)' },
   3: { count: 9, showTime: 2000, label: '困难 (9个)' },
 }
 
-const currentConfig = computed(() => difficultyConfig[difficulty.value])
+// 计算当前配置
+const currentPatternCount = computed(() => {
+  if (gameMode.value === 'assessment') {
+    return apiPatternCount.value
+  } else {
+    return difficultyConfig[difficulty.value].count
+  }
+})
+
+const currentShowTime = computed(() => {
+  if (gameMode.value === 'assessment') {
+    return apiShowTime.value
+  } else {
+    return difficultyConfig[difficulty.value].showTime
+  }
+})
+
+const currentConfig = computed(() => ({
+  count: currentPatternCount.value,
+  showTime: currentShowTime.value,
+  label: `${currentPatternCount.value}个图案`,
+}))
 
 // 颜色列表
 const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181', '#AA96DA', '#FCBAD3', '#A8D8EA', '#FF9F43']
@@ -79,7 +119,7 @@ function generatePatterns(count: number): PatternItem[] {
 }
 
 function initGame() {
-  patterns.value = generatePatterns(currentConfig.value.count)
+  patterns.value = generatePatterns(currentPatternCount.value)
   selectedIds.value = []
   correctCount.value = 0
   showCount.value = 0
@@ -101,7 +141,7 @@ function startGame() {
   memorizeTimer = setTimeout(() => {
     patterns.value = patterns.value.map(p => ({ ...p, visible: false }))
     gameStatus.value = 'playing'
-  }, currentConfig.value.showTime)
+  }, currentShowTime.value)
 }
 
 function stopGameTimer() {
@@ -125,7 +165,7 @@ function handlePatternTap(id: number) {
       p.id === id ? { ...p, visible: true } : p
     )
 
-    if (selectedIds.value.length === currentConfig.value.count) {
+    if (selectedIds.value.length === currentPatternCount.value) {
       finishGame()
     }
   }
@@ -140,27 +180,97 @@ function calculateScore(correct: number, total: number): { score: number; focusS
   return { score, focusScore }
 }
 
+// 页面加载
+onMounted(() => {
+  let targetAgeGroup: AgeGroup = '8-9'
+  
+  if (props.ageGroup) {
+    targetAgeGroup = props.ageGroup
+  } else if (userStore.currentChild?.birthDate) {
+    const { inferAgeGroup } = useAgeAdaptiveGame('pattern_memory')
+    targetAgeGroup = inferAgeGroup(userStore.currentChild.birthDate)
+  }
+  
+  loadConfig(targetAgeGroup)
+})
+
+async function submitRecord(score: number, focusScore: number) {
+  if (!userStore.currentChild) return
+  
+  try {
+    const accuracy = Math.round((correctCount.value / currentPatternCount.value) * 100) / 100
+    
+    if (gameMode.value === 'assessment' && props.assessmentId) {
+      const { submitGameResult } = await import('@/api/initialAssessment')
+      await submitGameResult(props.assessmentId, 'pattern_memory', {
+        score,
+        accuracy,
+        duration: Math.max(1, elapsedSeconds.value),
+        focusScore,
+        gameConfig: { 
+          patternCount: currentPatternCount.value,
+          showTime: currentShowTime.value,
+        },
+        rawData: {
+          correctCount: correctCount.value,
+          totalCount: currentPatternCount.value,
+          elapsedSeconds: elapsedSeconds.value,
+          difficultyLevel: apiDifficulty.value,
+        },
+      })
+    } else {
+      const res = await submitGameRecord({
+        childId: userStore.currentChild.id,
+        gameId: 4,
+        durationSeconds: Math.max(1, elapsedSeconds.value),
+        accuracy,
+        score,
+        focusScore,
+        difficultyLevel: difficulty.value,
+        gameConfig: { patternCount: currentPatternCount.value },
+        resultData: { correctCount: correctCount.value, totalCount: currentPatternCount.value },
+      })
+      gameStore.addTodayRecord(res.data)
+    }
+  } catch (error) {
+    console.error('submit record error:', error)
+  }
+}
+
 async function finishGame() {
   stopGameTimer()
   gameStatus.value = 'finished'
 
-  const { score, focusScore } = calculateScore(correctCount.value, currentConfig.value.count)
+  const { score, focusScore } = calculateScore(correctCount.value, currentPatternCount.value)
   resultScore.value = score
   resultFocusScore.value = focusScore
   showResult.value = true
 
-  if (userStore.currentChild) {
-    try {
-      const res = await submitGameRecord({
+  await submitRecord(score, focusScore)
+}
+
+function resetGame() {
+  stopGameTimer()
+  if (memorizeTimer) clearTimeout(memorizeTimer)
+  gameStatus.value = 'idle'
+  showResult.value = false
+  patterns.value = []
+  selectedIds.value = []
+  elapsedSeconds.value = 0
+  
+  if (gameMode.value === 'assessment') {
+    loadConfig('8-9')
+  }
+}
         childId: userStore.currentChild.id,
         gameId: 4, // G004 图形记忆
         durationSeconds: Math.max(1, elapsedSeconds.value),
-        accuracy: (Math.round((correctCount.value / currentConfig.value.count) * 100)) / 100,
+        accuracy: (Math.round((correctCount.value / currentPatternCount.value) * 100)) / 100,
         score,
         focusScore,
         difficultyLevel: difficulty.value,
-        gameConfig: { patternCount: currentConfig.value.count },
-        resultData: { correctCount: correctCount.value, totalCount: currentConfig.value.count },
+        gameConfig: { patternCount: currentPatternCount.value },
+        resultData: { correctCount: correctCount.value, totalCount: currentPatternCount.value },
       })
       gameStore.addTodayRecord(res.data)
     } catch (error) {
@@ -234,7 +344,7 @@ onUnmounted(() => {
         <text class="memorize-subtitle">记住颜色和形状的对应关系</text>
       </view>
       
-      <view class="pattern-grid" :class="`grid-${currentConfig.count}`">
+      <view class="pattern-grid" :class="`grid-${currentPatternCount}`">
         <view
           v-for="pattern in patterns"
           :key="pattern.id"
@@ -260,11 +370,11 @@ onUnmounted(() => {
         </view>
         <view class="status-item">
           <text class="status-label">目标</text>
-          <text class="status-value target">{{ currentConfig.count }}</text>
+          <text class="status-value target">{{ currentPatternCount }}</text>
         </view>
       </view>
 
-      <view class="pattern-grid" :class="`grid-${Math.ceil(Math.sqrt(currentConfig.count * 2))}`">
+      <view class="pattern-grid" :class="`grid-${Math.ceil(Math.sqrt(currentPatternCount * 2))}`">
         <view
           v-for="pattern in patterns"
           :key="pattern.id"
@@ -299,7 +409,7 @@ onUnmounted(() => {
 
         <view class="result-stats">
           <view class="result-stat">
-            <text class="result-stat-value">{{ correctCount }}/{{ currentConfig.count }}</text>
+            <text class="result-stat-value">{{ correctCount }}/{{ currentPatternCount }}</text>
             <text class="result-stat-label">正确数</text>
           </view>
           <view class="result-stat">
