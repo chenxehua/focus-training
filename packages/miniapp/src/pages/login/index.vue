@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { onUnmounted } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
@@ -72,10 +71,6 @@ async function wxLogin() {
   }
 }
 
-// 页面卸载时清理定时器
-onUnmounted(() => {
-  if (timer) clearInterval(timer)
-})
 </script>
 
 <template>
