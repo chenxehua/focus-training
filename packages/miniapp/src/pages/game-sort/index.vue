@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { useGameStore } from '@/store/game'
 import { submitGameRecord } from '@/api/game'
 import StarRating from '@/components/StarRating.vue'
+import { useAgeAdaptiveGame, inferAgeGroup, type AgeGroup } from '@/composables/useAgeAdaptiveGame'
+import { adaptQuickSortConfig, getQuickSortConfig, type QuickSortGameConfig } from '@/composables/adapters/quickSortAdapter'
 
 type DifficultyLevel = 1 | 2 | 3 | 4 | 5
 type GamePhase = 'start' | 'ready' | 'playing' | 'finished'
@@ -70,6 +72,34 @@ const CATEGORY_ITEMS: Record<string, { name: string; emoji: string }[]> = {
 const userStore = useUserStore()
 const gameStore = useGameStore()
 
+// 获取页面参数
+const pages = getCurrentPages()
+const currentPage = pages[pages.length - 1] as any
+const options = currentPage?.options || {}
+
+// 评估模式参数
+const isAssessmentMode = ref(options.assessmentId ? true : false)
+const assessmentId = ref(options.assessmentId ? parseInt(options.assessmentId) : null)
+const gameResultCallback = ref(options.onResult ? JSON.parse(decodeURIComponent(options.onResult)) : null)
+
+// 年龄适配配置
+const childAgeGroup = ref<AgeGroup>('6-7')
+const ageAdaptiveConfig = ref<QuickSortGameConfig | null>(null)
+
+// 年龄适配hook
+const { config: apiConfig } = useAgeAdaptiveGame('quick_sort', childAgeGroup.value)
+
+// 初始化年龄组
+onMounted(() => {
+  if (userStore.currentChild?.birthDate) {
+    childAgeGroup.value = inferAgeGroup(userStore.currentChild.birthDate)
+  }
+  
+  if (isAssessmentMode.value) {
+    ageAdaptiveConfig.value = adaptQuickSortConfig(apiConfig.value?.parameters, childAgeGroup.value)
+  }
+})
+
 // 难度配置
 const difficulty = ref<DifficultyLevel>(1)
 const difficultyConfig: Record<DifficultyLevel, {
@@ -87,7 +117,14 @@ const difficultyConfig: Record<DifficultyLevel, {
   5: { label: '大师 (4类)', categories: ['fruit', 'animal', 'toy', 'food'], basketCount: 4, itemCount: 20, fallSpeed: 2, timeLimit: 60 },
 }
 
-const currentConfig = computed(() => difficultyConfig[difficulty.value])
+const currentConfig = computed(() => {
+  // 评估模式：使用年龄适配配置
+  if (isAssessmentMode.value && ageAdaptiveConfig.value) {
+    return ageAdaptiveConfig.value
+  }
+  // 训练模式：使用难度配置
+  return difficultyConfig[difficulty.value]
+})
 
 // 游戏状态
 const gamePhase = ref<GamePhase>('start')
@@ -388,6 +425,30 @@ function formatTime(seconds: number): string {
   return `${s}秒`
 }
 
+/**
+ * 处理评估完成
+ */
+function handleAssessmentComplete() {
+  if (gameResultCallback.value) {
+    const resultData = {
+      gameCode: 'quick_sort',
+      score: resultScore.value,
+      accuracy: totalItems.value > 0 ? correctCount.value / totalItems.value : 0,
+      duration: elapsedSeconds.value,
+      difficultyLevel: isAssessmentMode.value ? apiConfig.value?.difficultyLevel || 1 : difficulty.value,
+      details: {
+        totalItems: totalItems.value,
+        correctCount: correctCount.value,
+        errorCount: errorCount.value,
+      }
+    }
+    
+    gameResultCallback.value(resultData)
+  }
+  
+  uni.navigateBack()
+}
+
 // 启动动画循环
 function startAnimation() {
   animationInterval = setInterval(() => {
@@ -416,7 +477,16 @@ onUnmounted(() => {
         </text>
       </view>
 
-      <view class="difficulty-list">
+      <!-- 评估模式信息 -->
+      <view v-if="isAssessmentMode" class="assessment-info">
+        <view class="assessment-badge">
+          <text class="assessment-badge-text">评估模式</text>
+        </view>
+        <text class="assessment-desc">难度已根据年龄自动调整</text>
+      </view>
+
+      <!-- 训练模式难度选择 -->
+      <view v-else class="difficulty-list">
         <view class="difficulty-header">选择难度</view>
         <view
           v-for="(config, level) in difficultyConfig"
@@ -549,11 +619,14 @@ onUnmounted(() => {
         </view>
 
         <view class="result-actions">
-          <view class="btn-primary result-btn" @tap="startGame">
+          <view v-if="isAssessmentMode" class="btn-primary result-btn" @tap="handleAssessmentComplete">
+            <text class="btn-text">完成评估</text>
+          </view>
+          <view v-else class="btn-primary result-btn" @tap="startGame">
             <text class="btn-text">再来一局</text>
           </view>
           <view class="btn-outline result-btn" @tap="resetGame">
-            <text class="btn-text-outline">换难度</text>
+            <text class="btn-text-outline">{{ isAssessmentMode ? '查看报告' : '换难度' }}</text>
           </view>
         </view>
       </view>
@@ -653,6 +726,34 @@ onUnmounted(() => {
   color: #ffffff;
   font-size: 26rpx;
   font-weight: 700;
+}
+
+/* 评估模式信息 */
+.assessment-info {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.assessment-badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8rpx 24rpx;
+  border-radius: 30rpx;
+}
+
+.assessment-badge-text {
+  font-size: 24rpx;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.assessment-desc {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .start-section {
