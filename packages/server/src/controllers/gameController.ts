@@ -22,8 +22,6 @@ export class GameController {
             category: g.category,
             difficultyLevels: g.difficulty_levels,
             targetAgeGroup: `${g.min_age}-${g.max_age}`,
-            difficultyLevels: g.difficulty_levels,
-            targetAgeGroup: `${g.min_age}-${g.max_age}`,
             description: g.description,
             isFree: g.requires_vip === 0,
           }))

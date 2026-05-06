@@ -64,7 +64,7 @@ let audioContext: any = null
 // 定时器
 let beatTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
-let animationFrame: number | null = null
+let animationFrame: ReturnType<typeof setInterval> | null = null
 
 // 评分阈值(ms)
 const PERFECT_THRESHOLD = 50
@@ -315,7 +315,7 @@ async function finishGame() {
 function resetGame() {
   if (beatTimer) clearInterval(beatTimer)
   if (countdownTimer) clearInterval(countdownTimer)
-  if (animationFrame) cancelAnimationFrame(animationFrame)
+  if (animationFrame) clearInterval(animationFrame)
   
   gamePhase.value = 'start'
   currentBeat.value = 0

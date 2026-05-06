@@ -337,7 +337,7 @@ function getStarStyle(star: Star): Record<string, string> {
 }
 
 onUnmounted(() => {
-  if (animationFrame) cancelAnimationFrame(animationFrame)
+  if (animationFrame) clearInterval(animationFrame)
   if (interferenceTimer) clearTimeout(interferenceTimer)
   stopGameTimer()
 })

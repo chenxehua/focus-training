@@ -82,7 +82,7 @@ onShow(() => {
   // 恢复session并根据登录状态加载数据
   userStore.restoreSession()
   if (userStore.currentChild && userStore.isLoggedIn) {
-    gameStore.fetchTodayData(userStore.currentChild.id)
+    loadData()
   } else {
     gameStore.clearAll()
   }

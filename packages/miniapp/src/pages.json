@@ -145,6 +145,62 @@
       }
     },
     {
+      "path": "pages/assessment/welcome",
+      "style": {
+        "navigationBarTitleText": "初次测评",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/assessment/consent",
+      "style": {
+        "navigationBarTitleText": "知情同意",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/assessment/questionnaire",
+      "style": {
+        "navigationBarTitleText": "问卷测评",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/assessment/games",
+      "style": {
+        "navigationBarTitleText": "游戏测评",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/assessment/game-play",
+      "style": {
+        "navigationBarTitleText": "游戏进行",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/assessment/report",
+      "style": {
+        "navigationBarTitleText": "测评报告",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/assessment/history",
+      "style": {
+        "navigationBarTitleText": "测评历史",
+        "navigationBarBackgroundColor": "#6C63FF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/membership/index",
       "style": {
         "navigationBarTitleText": "会员中心",

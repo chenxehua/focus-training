@@ -118,7 +118,7 @@ export class RecommendationService {
       }
 
       // 3. 根据年龄组调整
-      const gameAgeRange = this.getGameAgeRange(game)
+      const gameAgeRange = this.getGameAgeRange(game as any)
       if (profile.ageGroup === '4-6' && gameAgeRange.maxAge < 7) {
         score += 15
       } else if (profile.ageGroup === '10-12' && gameAgeRange.minAge > 9) {

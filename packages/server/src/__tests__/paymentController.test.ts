@@ -9,11 +9,13 @@ jest.mock('../models', () => ({
   MembershipModel: {
     create: jest.fn(),
     upsert: jest.fn(),
+    upsertChildMembership: jest.fn(),
     findOne: jest.fn(),
     toPublic: jest.fn((m) => m),
   },
   OrderModel: {
     create: jest.fn(),
+    createOrder: jest.fn(),
     updatePayStatus: jest.fn(),
     findById: jest.fn(),
     toPublic: jest.fn((m) => m),
@@ -51,19 +53,16 @@ describe('PaymentController', () => {
   describe('createOrder', () => {
     it('should create order successfully', async () => {
       const { OrderModel } = require('../models')
-      OrderModel.create.mockResolvedValueOnce({ id: 1, order_no: 'ORD123' })
+      OrderModel.createOrder.mockResolvedValueOnce({ id: 1, order_no: 'ORD123' })
 
       mockReq.body = {
-        product_type: 'membership',
-        product_id: 'yearly_basic',
-        product_name: '年度会员',
+        membership_id: 1,
         amount: 199,
-        child_id: 1,
       }
 
       await PaymentController.createOrder(mockReq, mockRes)
 
-      expect(OrderModel.create).toHaveBeenCalled()
+      expect(OrderModel.createOrder).toHaveBeenCalled()
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
@@ -92,18 +91,16 @@ describe('PaymentController', () => {
 
     it('should use default values when body is empty', async () => {
       const { OrderModel } = require('../models')
-      OrderModel.create.mockResolvedValueOnce({ id: 1, order_no: 'ORD123' })
+      OrderModel.createOrder.mockResolvedValueOnce({ id: 1, order_no: 'ORD123' })
 
       mockReq.body = {}
 
       await PaymentController.createOrder(mockReq, mockRes)
 
-      expect(OrderModel.create).toHaveBeenCalledWith(
+      expect(OrderModel.createOrder).toHaveBeenCalledWith(
         expect.objectContaining({
-          product_type: 'membership',
-          product_id: 'yearly_basic',
-          product_name: '年度会员',
           amount: 199,
+          membershipId: 1,
         })
       )
     })
@@ -241,12 +238,22 @@ describe('PaymentController', () => {
       const db = require('../config/database')
 
       OrderModel.updatePayStatus.mockResolvedValueOnce(undefined)
-      MembershipModel.upsert.mockResolvedValueOnce(undefined)
+      MembershipModel.upsertChildMembership.mockResolvedValueOnce(undefined)
 
+      // Mock queryOne calls in order:
+      // 1. Get order info (needs product_type = 'membership')
       db.queryOne.mockResolvedValueOnce({
         user_id: 1,
         product_type: 'membership',
         product_id: 'yearly',
+      })
+      // 2. Get membership id
+      db.queryOne.mockResolvedValueOnce({
+        id: 1,
+      })
+      // 3. Get child id
+      db.queryOne.mockResolvedValueOnce({
+        id: 1,
       })
 
       mockReq.body = {
@@ -258,7 +265,7 @@ describe('PaymentController', () => {
       await PaymentController.handleCallback(mockReq, mockRes)
 
       expect(OrderModel.updatePayStatus).toHaveBeenCalledWith('ORD123', 1, 'WX20240503001')
-      expect(MembershipModel.upsert).toHaveBeenCalled()
+      expect(MembershipModel.upsertChildMembership).toHaveBeenCalled()
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
@@ -289,14 +296,6 @@ describe('PaymentController', () => {
 
     it('should not activate membership for non-membership orders', async () => {
       const { OrderModel, MembershipModel } = require('../models')
-      const db = require('../config/database')
-
-      OrderModel.updatePayStatus.mockResolvedValueOnce(undefined)
-      db.queryOne.mockResolvedValueOnce({
-        user_id: 1,
-        product_type: 'game_pack',
-        product_id: 'level_pack',
-      })
 
       mockReq.body = {
         order_no: 'ORD123',
@@ -306,7 +305,7 @@ describe('PaymentController', () => {
 
       await PaymentController.handleCallback(mockReq, mockRes)
 
-      expect(MembershipModel.upsert).not.toHaveBeenCalled()
+      expect(MembershipModel.upsertChildMembership).not.toHaveBeenCalled()
     })
   })
 })

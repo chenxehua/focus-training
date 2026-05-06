@@ -131,13 +131,18 @@ function generateMaze(): MazeCell[][] {
   }
   
   // 计算最优路径（用于提示）
-  bestPath.value = findPath(playerPos.value, endPos.value)
+  // 先在本地 maze 上计算
+  const startPos = { x: 1, y: 1 }
+  const endPosition = { x: size - 2, y: size - 2 }
+  bestPath.value = findPathOnMaze(maze, startPos, endPosition)
   
   return maze
 }
 
-function findPath(start: Position, end: Position): Position[] {
-  const size = currentConfig.value.gridSize
+function findPathOnMaze(mazeData: MazeCell[][], start: Position, end: Position): Position[] {
+  if (!mazeData || mazeData.length === 0) return []
+  const size = mazeData.length
+
   const queue: { pos: Position; path: Position[] }[] = [{ pos: start, path: [start] }]
   const visited = new Set<string>()
   
@@ -159,7 +164,9 @@ function findPath(start: Position, end: Position): Position[] {
       const ny = pos.y + dy
       
       if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
-        const cell = maze.value[ny][nx]
+        const row = mazeData[ny]
+        if (!row) continue
+        const cell = row[nx]
         if (cell.type !== 'wall' && !visited.has(`${nx},${ny}`)) {
           queue.push({ pos: { x: nx, y: ny }, path: [...path, { x: nx, y: ny }] })
         }

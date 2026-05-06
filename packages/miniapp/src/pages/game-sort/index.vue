@@ -245,8 +245,7 @@ function updateItems() {
     }
   })
   
-  // 更新动画
-  requestAnimationFrame(updateItems)
+  // 更新动画 - 使用 setInterval 在 startAnimation 中驱动
 }
 
 function handleItemClick(item: SortableItem) {

@@ -31,10 +31,10 @@ export class PaymentController {
       const orderNo = `ORDER_${Date.now()}_${uuidv4().substring(0, 8).toUpperCase()}`
 
       // 创建订单
-      await OrderModel.create({
-        order_no: orderNo,
-        user_id: userId,
-        membership_id: membership_id || undefined,
+      await OrderModel.createOrder({
+        orderNo: orderNo,
+        userId: userId,
+        membershipId: membership_id || 1,
         amount: amount || 199
       })
 
@@ -189,18 +189,29 @@ export class PaymentController {
         )
 
         if (order && order.product_type === 'membership') {
-          // 创建或更新会员
-          const startDate = new Date()
-          const endDate = new Date(startDate)
-          endDate.setFullYear(endDate.getFullYear() + 1) // 年卡加1年
+          // 获取孩子的会员ID
+          const memberships = await queryOne<{ id: number }>('SELECT id FROM membership WHERE status = 1 LIMIT 1')
+          const membershipId = memberships?.id || 1
+          
+          // 获取用户的第一个孩子
+          const child = await queryOne<{ id: number }>(
+            'SELECT id FROM child WHERE user_id = ? LIMIT 1',
+            [order.user_id]
+          )
+          
+          if (child) {
+            // 创建或更新会员
+            const startDate = new Date()
+            const endDate = new Date(startDate)
+            endDate.setFullYear(endDate.getFullYear() + 1) // 年卡加1年
 
-          await MembershipModel.upsert({
-            user_id: order.user_id,
-            member_type: 'yearly',
-            member_level: 'vip',
-            start_date: startDate,
-            end_date: endDate
-          })
+            await MembershipModel.upsertChildMembership({
+              childId: child.id,
+              membershipId: membershipId,
+              startDate: startDate,
+              endDate: endDate
+            })
+          }
         }
 
         res.json({ success: true, message: '支付成功' })

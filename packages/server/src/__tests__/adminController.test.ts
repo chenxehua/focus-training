@@ -262,8 +262,8 @@ describe('AdminController', () => {
     it('should return active members', async () => {
       ;(queryOne as jest.Mock).mockResolvedValue({ total: 50 })
       ;(query as jest.Mock).mockResolvedValue([
-        { id: 1, membership_type: 'annual', status: 'active' },
-        { id: 2, membership_type: 'monthly', status: 'active' }
+        { id: 1, membership_type: 'annual', status: 1 },
+        { id: 2, membership_type: 'monthly', status: 1 }
       ])
 
       const req = mockRequest({ query: { status: 'active' } })
@@ -272,7 +272,7 @@ describe('AdminController', () => {
       await adminController.getMemberList(req, res)
 
       expect(query).toHaveBeenCalledWith(
-        expect.stringContaining("m.status = 'active'"),
+        expect.stringContaining("m.status = 1"),
         expect.any(Array)
       )
     })
@@ -287,7 +287,7 @@ describe('AdminController', () => {
       await adminController.getMemberList(req, res)
 
       expect(query).toHaveBeenCalledWith(
-        expect.stringContaining("m.status != 'active'"),
+        expect.stringContaining("m.status != 1"),
         expect.any(Array)
       )
     })

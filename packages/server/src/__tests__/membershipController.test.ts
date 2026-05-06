@@ -34,12 +34,19 @@ describe('MembershipController', () => {
   })
 
   describe('getMembershipStatus', () => {
-    it('should require authentication', async () => {
+    it('should return non-member for unauthenticated user', async () => {
       mockReq.userId = undefined
 
       await MembershipController.getMembershipStatus(mockReq, mockRes)
 
-      expect(mockRes.status).toHaveBeenCalledWith(401)
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            is_vip: false,
+          }),
+        })
+      )
     })
 
     it('should return null for non-member', async () => {
@@ -66,8 +73,8 @@ describe('MembershipController', () => {
       MembershipModel.findByUserId.mockResolvedValueOnce({
         id: 1,
         user_id: 1,
-        member_type: 'yearly',
-        member_level: 'vip',
+        tier: 'yearly',
+        name: 'vip',
         start_date: new Date(),
         end_date: endDate,
         status: 1,
