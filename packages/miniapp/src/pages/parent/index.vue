@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useUserStore } from '@/store/user'
-import { getWeeklyReport } from '@/api/report'
+import { getWeeklyReport, getReportList } from '@/api/report'
 import ProgressBar from '@/components/ProgressBar.vue'
-import type { WeeklyReport } from '@/api/report'
+import type { WeeklyReport, ReportListItem } from '@/api/report'
 
 const userStore = useUserStore()
 const weeklyReport = ref<WeeklyReport | null>(null)
+const reportList = ref<ReportListItem[]>([])
 const isLoading = ref(false)
+const activeTab = ref<'weekly' | 'history'>('weekly')
 
 const selectedChildId = computed(() => userStore.currentChild?.id)
 
@@ -39,7 +41,7 @@ const trendMax = computed(() => {
   return Math.max(...scores, 100)
 })
 
-async function loadReport() {
+async function loadWeeklyReport() {
   if (!selectedChildId.value) return
   isLoading.value = true
   try {
@@ -52,17 +54,58 @@ async function loadReport() {
   }
 }
 
+async function loadHistoryReports() {
+  if (!selectedChildId.value) return
+  isLoading.value = true
+  try {
+    const res = await getReportList({ childId: selectedChildId.value, page: 1, pageSize: 20 })
+    reportList.value = res.data.list || []
+  } catch (error) {
+    console.error(error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+function switchTab(tab: 'weekly' | 'history') {
+  activeTab.value = tab
+  if (tab === 'weekly') {
+    loadWeeklyReport()
+  } else {
+    loadHistoryReports()
+  }
+}
+
 function switchChild(childId: number) {
   const child = userStore.children.find(c => c.id === childId)
   if (child) {
     userStore.setCurrentChild(child)
-    loadReport()
+    if (activeTab.value === 'weekly') {
+      loadWeeklyReport()
+    } else {
+      loadHistoryReports()
+    }
   }
+}
+
+function viewReportDetail(reportId: number) {
+  uni.navigateTo({ url: `/pages/report-detail/index?id=${reportId}` })
+}
+
+function formatReportDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  return `${date.getMonth() + 1}月${date.getDate()}日`
 }
 
 onMounted(() => {
   if (!userStore.isLoggedIn) return
-  userStore.fetchChildren().then(() => loadReport())
+  userStore.fetchChildren().then(() => {
+    if (activeTab.value === 'weekly') {
+      loadWeeklyReport()
+    } else {
+      loadHistoryReports()
+    }
+  })
 })
 </script>
 
@@ -100,113 +143,163 @@ onMounted(() => {
         <text class="empty-hint">请前往「我的」页面添加孩子</text>
       </view>
 
-      <!-- 加载中 -->
-      <view v-else-if="isLoading" class="loading-area">
-        <view v-for="i in 3" :key="i" class="skeleton-block" />
-      </view>
+      <template v-else>
+        <!-- Tab切换 -->
+        <view class="tab-bar">
+          <view
+            class="tab-item"
+            :class="{ active: activeTab === 'weekly' }"
+            @tap="switchTab('weekly')"
+          >
+            <text class="tab-text">本周报告</text>
+          </view>
+          <view
+            class="tab-item"
+            :class="{ active: activeTab === 'history' }"
+            @tap="switchTab('history')"
+          >
+            <text class="tab-text">历史报告</text>
+          </view>
+        </view>
 
-      <!-- 报告内容 -->
-      <view v-else-if="weeklyReport" class="report-content">
-        <!-- 本周概览 -->
-        <view class="section-card">
-          <text class="section-title">本周训练概览</text>
-          <view class="overview-grid">
-            <view class="overview-item">
-              <text class="overview-value">{{ weeklyReport.trainingCount }}</text>
-              <text class="overview-label">训练次数</text>
+        <!-- 加载中 -->
+        <view v-if="isLoading" class="loading-area">
+          <view v-for="i in 3" :key="i" class="skeleton-block" />
+        </view>
+
+        <!-- 本周报告内容 -->
+        <view v-else-if="activeTab === 'weekly' && weeklyReport" class="report-content">
+          <!-- 本周概览 -->
+          <view class="section-card">
+            <text class="section-title">本周训练概览</text>
+            <view class="overview-grid">
+              <view class="overview-item">
+                <text class="overview-value">{{ weeklyReport.trainingCount }}</text>
+                <text class="overview-label">训练次数</text>
+              </view>
+              <view class="overview-item">
+                <text class="overview-value">{{ formatDuration(weeklyReport.totalDuration) }}</text>
+                <text class="overview-label">总训练时长</text>
+              </view>
+              <view class="overview-item" style="grid-column: 1 / -1">
+                <text
+                  class="overview-value"
+                  :style="{ color: getLevelColor(weeklyReport.avgFocusScore) }"
+                >
+                  {{ weeklyReport.avgFocusScore }}
+                </text>
+                <text class="overview-label">平均专注得分 · {{ getLevelLabel(weeklyReport.avgFocusScore) }}</text>
+              </view>
             </view>
-            <view class="overview-item">
-              <text class="overview-value">{{ formatDuration(weeklyReport.totalDuration) }}</text>
-              <text class="overview-label">总训练时长</text>
-            </view>
-            <view class="overview-item" style="grid-column: 1 / -1">
-              <text
-                class="overview-value"
-                :style="{ color: getLevelColor(weeklyReport.avgFocusScore) }"
+          </view>
+
+          <!-- 每日趋势 -->
+          <view class="section-card">
+            <text class="section-title">本周专注趋势</text>
+            <view class="trend-chart">
+              <view
+                v-for="(day, index) in weeklyReport.trendData"
+                :key="index"
+                class="trend-bar-wrap"
               >
-                {{ weeklyReport.avgFocusScore }}
+                <text class="trend-score">{{ day.focusScore || '-' }}</text>
+                <view class="trend-bar-track">
+                  <view
+                    class="trend-bar-fill"
+                    :style="{
+                      height: day.focusScore ? `${(day.focusScore / trendMax) * 100}%` : '0%',
+                      backgroundColor: getLevelColor(day.focusScore),
+                    }"
+                  />
+                </view>
+                <text class="trend-date">{{ day.date.slice(5) }}</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 游戏分布 -->
+          <view v-if="weeklyReport.gameBreakdown && weeklyReport.gameBreakdown.length > 0" class="section-card">
+            <text class="section-title">游戏训练分布</text>
+            <view class="game-breakdown">
+              <view
+                v-for="item in weeklyReport.gameBreakdown"
+                :key="item.gameCode"
+                class="breakdown-item"
+              >
+                <view class="breakdown-left">
+                  <text class="breakdown-name">{{ item.gameName }}</text>
+                  <text class="breakdown-count">{{ item.count }} 次</text>
+                </view>
+                <view class="breakdown-right">
+                  <ProgressBar
+                    :value="item.avgScore"
+                    :color="'#6C63FF'"
+                    :height="12"
+                    :show-label="true"
+                  />
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <!-- 成就亮点 -->
+          <view v-if="weeklyReport.highlights && weeklyReport.highlights.length > 0" class="section-card">
+            <text class="section-title">本周亮点</text>
+            <view class="highlights">
+              <view
+                v-for="(item, index) in weeklyReport.highlights"
+                :key="index"
+                class="highlight-item"
+              >
+                <view class="highlight-icon-wrap">
+                  <text class="highlight-icon">🏆</text>
+                </view>
+                <view class="highlight-content">
+                  <text class="highlight-title">{{ item.title }}</text>
+                  <text class="highlight-desc">{{ item.description }}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 历史报告列表 -->
+        <view v-else-if="activeTab === 'history'" class="report-list">
+          <view v-if="reportList.length === 0" class="empty-state">
+            <text class="empty-icon">📋</text>
+            <text class="empty-text">暂无历史报告</text>
+            <text class="empty-hint">完成更多训练后查看历史报告</text>
+          </view>
+          <view
+            v-else
+            v-for="report in reportList"
+            :key="report.id"
+            class="report-item"
+            @tap="viewReportDetail(report.id)"
+          >
+            <view class="report-item-left">
+              <text class="report-item-type">
+                {{ report.reportType === 'daily' ? '日报告' : report.reportType === 'weekly' ? '周报告' : '月报告' }}
               </text>
-              <text class="overview-label">平均专注得分 · {{ getLevelLabel(weeklyReport.avgFocusScore) }}</text>
+              <text class="report-item-date">{{ formatReportDate(report.createdAt) }}</text>
+            </view>
+            <view class="report-item-right">
+              <view class="report-item-score">
+                <text class="score-num">{{ report.overallScore }}</text>
+                <text class="score-unit">分</text>
+              </view>
+              <text class="report-item-arrow">›</text>
             </view>
           </view>
         </view>
 
-        <!-- 每日趋势 -->
-        <view class="section-card">
-          <text class="section-title">本周专注趋势</text>
-          <view class="trend-chart">
-            <view
-              v-for="(day, index) in weeklyReport.trendData"
-              :key="index"
-              class="trend-bar-wrap"
-            >
-              <text class="trend-score">{{ day.focusScore || '-' }}</text>
-              <view class="trend-bar-track">
-                <view
-                  class="trend-bar-fill"
-                  :style="{
-                    height: day.focusScore ? `${(day.focusScore / trendMax) * 100}%` : '0%',
-                    backgroundColor: getLevelColor(day.focusScore),
-                  }"
-                />
-              </view>
-              <text class="trend-date">{{ day.date.slice(5) }}</text>
-            </view>
-          </view>
+        <!-- 暂无数据 -->
+        <view v-else-if="activeTab === 'weekly'" class="empty-state">
+          <text class="empty-icon">📊</text>
+          <text class="empty-text">本周暂无训练数据</text>
+          <text class="empty-hint">完成游戏后查看专注力报告</text>
         </view>
-
-        <!-- 游戏分布 -->
-        <view v-if="weeklyReport.gameBreakdown.length > 0" class="section-card">
-          <text class="section-title">游戏训练分布</text>
-          <view class="game-breakdown">
-            <view
-              v-for="item in weeklyReport.gameBreakdown"
-              :key="item.gameCode"
-              class="breakdown-item"
-            >
-              <view class="breakdown-left">
-                <text class="breakdown-name">{{ item.gameName }}</text>
-                <text class="breakdown-count">{{ item.count }} 次</text>
-              </view>
-              <view class="breakdown-right">
-                <ProgressBar
-                  :value="item.avgScore"
-                  :color="'#6C63FF'"
-                  :height="12"
-                  :show-label="true"
-                />
-              </view>
-            </view>
-          </view>
-        </view>
-
-        <!-- 成就亮点 -->
-        <view v-if="weeklyReport.highlights.length > 0" class="section-card">
-          <text class="section-title">本周亮点</text>
-          <view class="highlights">
-            <view
-              v-for="(item, index) in weeklyReport.highlights"
-              :key="index"
-              class="highlight-item"
-            >
-              <view class="highlight-icon-wrap">
-                <text class="highlight-icon">🏆</text>
-              </view>
-              <view class="highlight-content">
-                <text class="highlight-title">{{ item.title }}</text>
-                <text class="highlight-desc">{{ item.description }}</text>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
-
-      <!-- 暂无数据 -->
-      <view v-else class="empty-state">
-        <text class="empty-icon">📊</text>
-        <text class="empty-text">本周暂无训练数据</text>
-        <text class="empty-hint">完成游戏后查看专注力报告</text>
-      </view>
+      </template>
     </template>
   </view>
 </template>
@@ -271,6 +364,30 @@ onMounted(() => {
   color: #666666;
 }
 
+.tab-bar {
+  display: flex;
+  flex-direction: row;
+  background-color: #ffffff;
+  padding: 0 24rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.tab-item {
+  flex: 1;
+  padding: 24rpx 0;
+  text-align: center;
+
+  &.active {
+    border-bottom: 4rpx solid #6C63FF;
+    .tab-text { color: #6C63FF; font-weight: 600; }
+  }
+}
+
+.tab-text {
+  font-size: 28rpx;
+  color: #666666;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -308,6 +425,73 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20rpx;
+}
+
+.report-list {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.report-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #ffffff;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.06);
+
+  &:active { background-color: #f8f8f8; }
+}
+
+.report-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.report-item-type {
+  font-size: 28rpx;
+  color: #333333;
+  font-weight: 600;
+}
+
+.report-item-date {
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.report-item-right {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.report-item-score {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+}
+
+.score-num {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #6C63FF;
+}
+
+.score-unit {
+  font-size: 24rpx;
+  color: #999999;
+  margin-left: 4rpx;
+}
+
+.report-item-arrow {
+  font-size: 36rpx;
+  color: #cccccc;
 }
 
 .section-card {
