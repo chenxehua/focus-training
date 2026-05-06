@@ -2,13 +2,13 @@ import { post, get } from './request'
 
 export interface MembershipInfo {
   id: number
-  memberType: 'month' | 'quarter' | 'year' | 'lifetime'
-  memberName: string
-  startDate: string
-  endDate?: string
+  member_type: 'month' | 'quarter' | 'year' | 'lifetime'
+  member_name: string
+  start_date: string
+  end_date?: string
   status: 'active' | 'expired' | 'cancelled'
   features: string[]
-  isVip: boolean
+  is_vip: boolean
 }
 
 export interface MembershipStatus {

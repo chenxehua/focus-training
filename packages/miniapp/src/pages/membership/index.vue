@@ -19,14 +19,14 @@ interface BenefitTier {
 }
 
 interface MembershipInfo {
-  memberType: string
-  memberName: string
-  endDate?: string
+  member_type: string
+  member_name: string
+  end_date?: string
   status: string
-  isVip: boolean
+  is_vip: boolean
 }
 
-const isVip = computed(() => membership.value?.isVip)
+const isVip = computed(() => membership.value?.is_vip)
 
 // 推荐套餐高亮
 const recommendedType = computed(() => 'year')
@@ -111,9 +111,9 @@ onMounted(() => {
       </view>
 
       <!-- 会员到期信息 -->
-      <view v-if="isVip && membership?.endDate" class="expiry-info">
+      <view v-if="isVip && membership?.end_date" class="expiry-info">
         <text class="expiry-label">有效期至</text>
-        <text class="expiry-date">{{ membership.endDate }}</text>
+        <text class="expiry-date">{{ membership.end_date }}</text>
       </view>
     </view>
 
@@ -160,7 +160,7 @@ onMounted(() => {
           :class="{
             recommended: plan.type === recommendedType,
             selected: !isVip,
-            disabled: isVip && plan.type === membership?.memberType
+            disabled: isVip && plan.type === membership?.member_type
           }"
         >
           <!-- 推荐标签 -->
@@ -194,7 +194,7 @@ onMounted(() => {
 
           <!-- 立即开通按钮 -->
           <view
-            v-if="!isVip || plan.type !== membership?.memberType"
+            v-if="!isVip || plan.type !== membership?.member_type"
             class="plan-action"
             @tap="handlePurchase(plan.type)"
           >
