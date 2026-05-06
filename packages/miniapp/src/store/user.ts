@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
-import { getUserInfo, getChildren } from '@/api/user'
+import { getUserInfo, getChildren, wxLogin as wxLoginApi } from '@/api/user'
+import { sendCode as sendCodeApi, phoneLogin as phoneLoginApi } from '@/api/auth'
 import { useGameStore } from './game'
 
 export interface UserInfo {
@@ -91,6 +92,26 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  async function sendCode(phone: string) {
+    return sendCodeApi(phone)
+  }
+
+  async function phoneLogin(phone: string, code: string) {
+    const res = await phoneLoginApi(phone, code)
+    setToken(res.data.token)
+    setUserInfo(res.data.userInfo)
+    await fetchChildren()
+    return res.data
+  }
+
+  async function wxLogin(code: string) {
+    const res = await wxLoginApi({ code })
+    setToken(res.data.token)
+    setUserInfo(res.data.userInfo)
+    await fetchChildren()
+    return res.data
+  }
+
   function logout() {
     const gameStore = useGameStore()
     token.value = ''
@@ -119,6 +140,9 @@ export const useUserStore = defineStore('user', () => {
     setChildren,
     fetchUserInfo,
     fetchChildren,
+    sendCode,
+    phoneLogin,
+    wxLogin,
     logout,
   }
 })
