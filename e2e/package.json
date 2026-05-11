@@ -14,6 +14,7 @@
     "test:games": "playwright test tests/game-interactions.spec.ts",
     "test:components": "playwright test tests/components.spec.ts",
     "test:miniapp": "playwright test tests/miniapp.spec.ts",
+    "test:assessment": "playwright test tests/assessment-api.spec.ts",
     "test:all": "playwright test",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",

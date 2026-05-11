@@ -3,7 +3,7 @@
  * 测试完整的测评流程: 状态查询 -> 开始测评 -> 问卷 -> 游戏 -> 报告生成 -> 报告查看
  */
 
-import { test, expect, APIRequestContext } from '@playwright/test';
+import { test, expect, describe, APIRequestContext } from '@playwright/test';
 
 // 测试配置
 const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000/api';
